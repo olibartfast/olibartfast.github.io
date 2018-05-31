@@ -164,15 +164,19 @@
             <!-- To configure the contact form email address, go to mail/contact_me.php and update the email address in the PHP file on line 19. -->
             <!-- The form should work on most web servers, but if the form is not working you may need to configure your web server differently. -->
             <form id="contact-form" action="//formspree.io/oli_fra@libero.it" method="post">
+               <div class="col-lg-8 mx-auto">
               <input type="text" name="Name" placeholder="Name" required>
               <input type="email" name="Email" placeholder="Email" required>
+
               <textarea name="Message" cols="30" rows="6" placeholder="Message" required></textarea>
+
               <!-- CONFIG -->
               <input class="is-hidden" type="text" name="_gotcha">
               <input type="hidden" name="_subject" value="Subject">
               <input type="hidden" name="_cc" value="email@cc.com">
               <!-- /CONFIG -->
               <input class="submit" type="submit" value="Send">
+               </div>
             </form>
           </div>
         </div>
