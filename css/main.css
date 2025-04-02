@@ -442,37 +442,49 @@ body.blog-page {
   body.blog-page #header {
     display: none;
   }
-  
-  /* Wrapper to center the blog content area like the original #header */
-  .blog-view-wrapper {
-    display: inline-block; /* Allows vertical alignment */
-    vertical-align: middle; /* Center vertically */
-    width: 90%; /* Match #header width */
-    max-width: 800px; /* Max width for readability */
-    position: relative; /* For positioning the back button */
-    text-align: left; /* Reset text alignment for content */
-    height: 85vh; /* Set a height for the container */
-    max-height: 700px; /* Optional max height */
-    overflow: hidden; /* Hide anything overflowing the wrapper */
-    padding-top: 40px; /* Space for back button */
-    /* Add a subtle background or border if needed to distinguish from body */
-    /* background-color: rgba(0, 0, 0, 0.1); */
-    /* border: 1px solid #444; */
-    /* border-radius: 8px; */
+/* ==============================
+   Blog Styling (Fixed Layout Mimic - Static HTML - Full Width)
+   ============================== */
+
+/* Apply to body tag on blog pages */
+body.blog-page {
+    /* Ensure the dark background is applied */
+    background: #302e2f;
+    /* Body remains overflow: hidden */
   }
   
-  /* The actual scrollable content area */
+  /* Hide the original header content when on a blog page */
+  body.blog-page #header {
+    display: none;
+  }
+  
+  /* Wrapper - Modified for full width and height */
+  .blog-view-wrapper {
+    display: block; /* Ensure block display */
+    width: 100%;    /* Use full width */
+    max-width: none;  /* No max-width constraint */
+    position: relative; /* For positioning the back button */
+    text-align: left; /* Reset text alignment for content */
+    height: 100vh;  /* Use full viewport height */
+    overflow: hidden; /* Hide anything overflowing the wrapper */
+    padding-top: 50px; /* Consistent padding for back button */
+    margin: 0;      /* Remove any auto margins */
+    box-sizing: border-box; /* Include padding in height/width */
+  }
+  
+  /* The actual scrollable content area - Modified padding */
   .blog-scrollable-content {
     height: 100%; /* Fill the wrapper height */
     overflow-y: auto; /* Enable VERTICAL scrolling */
     overflow-x: hidden; /* Disable horizontal scrolling */
-    padding: 10px 30px 30px 30px; /* Padding inside the scroll area */
+    padding: 10px 30px 40px 30px; /* Add sufficient side padding */
     color: #ddd; /* Light text */
     font-family: inherit; /* Inherit 'Source Sans Pro' */
     line-height: 1.75em; /* Match body */
+    box-sizing: border-box; /* Include padding in height */
   }
   
-  /* Custom scrollbar for webkit browsers (optional, but looks nice on dark) */
+  /* Custom scrollbar for webkit browsers (Optional) */
   .blog-scrollable-content::-webkit-scrollbar {
     width: 8px;
   }
@@ -497,17 +509,17 @@ body.blog-page {
   .blog-scrollable-content h5,
   .blog-scrollable-content h6 {
       color: #fff;
-      font-weight: 900; /* Match main page H1 weight */
-      letter-spacing: -0.035em; /* Match main page H1 spacing */
+      font-weight: 900;
+      letter-spacing: -0.035em;
       margin-top: 1.5em;
       margin-bottom: 0.8em;
       line-height: 1.3;
   }
   .blog-scrollable-content h1 {
-      border-bottom: 2px solid #555; /* Lighter border */
+      border-bottom: 2px solid #555;
       padding-bottom: 0.4em;
-      margin-top: 0; /* No top margin for the very first H1 */
-      font-size: 2.2em; /* Adjust size as needed */
+      margin-top: 0;
+      font-size: 2.2em;
   }
   .blog-scrollable-content h2 { font-size: 1.6em; }
   .blog-scrollable-content h3 { font-size: 1.3em; font-weight: 300; letter-spacing: normal; }
@@ -515,67 +527,67 @@ body.blog-page {
   .blog-scrollable-content p,
   .blog-scrollable-content li {
       margin-bottom: 1em;
-      color: #ccc; /* Slightly dimmer than pure white */
+      color: #ccc;
   }
   
   .blog-scrollable-content ul,
   .blog-scrollable-content ol {
       padding-left: 25px;
-      list-style-position: outside; /* Ensure bullets/numbers are outside */
+      margin-bottom: 1.5em;
+      list-style-position: outside;
   }
-  .blog-scrollable-content ul { list-style-type: disc; } /* Default bullet points */
-  .blog-scrollable-content ol { list-style-type: decimal; } /* Default numbers */
+  .blog-scrollable-content ul { list-style-type: disc; }
+  .blog-scrollable-content ol { list-style-type: decimal; }
+  .blog-scrollable-content li { margin-bottom: 0.5em; }
+  
   
   /* Links within blog content */
   .blog-scrollable-content a {
-      color: #7fbfed; /* Light blue link */
-      border-bottom: dotted 1px rgba(127, 191, 237, 0.5); /* Use site's default link style */
-      /* transition inherit from global 'a' style */
+      color: #7fbfed;
+      border-bottom: dotted 1px rgba(127, 191, 237, 0.5);
   }
   .blog-scrollable-content a:hover {
-      color: #a1d3f1; /* Lighter blue on hover */
-      border-color: transparent; /* Match site's default link hover */
+      color: #a1d3f1;
+      border-color: transparent;
   }
   
   /* Code blocks styling */
   .blog-scrollable-content pre {
-      /* Background/border will be handled by Prism Theme */
-      padding: 1em; /* Use em for padding */
+      padding: 1em;
       border-radius: 5px;
-      overflow-x: auto; /* Still allow horizontal scroll for code */
+      overflow-x: auto;
       line-height: 1.45;
       margin: 1.5em 0;
-      font-size: 0.9em; /* Slightly smaller code font */
+      font-size: 0.9em;
   }
   
   /* Inline code styling */
   .blog-scrollable-content code {
-      font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; /* Monospace font */
+      font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
       font-size: 0.9em;
-      /* Use subtle background matching Prism theme if possible */
       background-color: rgba(255, 255, 255, 0.08);
       padding: 0.2em 0.4em;
       border-radius: 3px;
-      color: #eee; /* Light color for inline code */
+      color: #eee;
   }
   
   /* Code inside pre blocks (handled by Prism) */
   .blog-scrollable-content pre code {
-      background-color: transparent !important; /* Ensure no background */
+      background-color: transparent !important;
       padding: 0;
       border-radius: 0;
-      font-size: inherit; /* Inherit size from pre */
-      color: inherit; /* Inherit color from Prism theme */
-      font-family: inherit; /* Inherit font from Prism theme */
-      border: none; /* Ensure no border */
+      font-size: inherit;
+      color: inherit;
+      font-family: inherit;
+      border: none;
+      line-height: inherit;
   }
   
-  /* Ensure Prism theme applies correctly within scrollable area */
-  /* Add border/background to the PRE element itself if Prism theme doesn't */
+  /* Ensure Prism theme applies correctly */
   .blog-scrollable-content pre[class*="language-"] {
-      margin: 1.5em 0 !important; /* Ensure margin is applied */
-      border-radius: 5px !important; /* Ensure border-radius */
-      border: 1px solid #555; /* Add a subtle border */
+      margin: 1.5em 0 !important;
+      border-radius: 5px !important;
+      border: 1px solid #555;
       /* Background comes from Prism theme CSS */
   }
   
@@ -588,11 +600,17 @@ body.blog-page {
   .blog-scrollable-content .blog-list li {
       margin-bottom: 2em;
       padding-bottom: 1.5em;
-      border-bottom: 1px solid #444; /* Darker separator */
+      border-bottom: 1px solid #444;
   }
   .blog-scrollable-content .blog-list li:last-child { border-bottom: none; }
   .blog-scrollable-content .blog-list h2 { margin-top: 0; margin-bottom: 0.3em; }
-  .blog-scrollable-content .blog-list h2 a { /* Link style already defined above */ }
+  .blog-scrollable-content .blog-list h2 a {
+      border-bottom: none; /* Remove underline from list titles */
+  }
+  .blog-scrollable-content .blog-list h2 a:hover {
+      border-bottom: none;
+      text-decoration: underline; /* Add underline on hover only */
+  }
   .blog-scrollable-content .blog-list .post-meta { font-size: 0.9em; color: #999; margin-bottom: 0.5em; }
   
   .blog-scrollable-content hr { border: 0; height: 1px; background-color: #444; margin: 2em 0; }
@@ -600,22 +618,74 @@ body.blog-page {
   /* Back Button Styling */
   .blog-back-button {
       position: absolute;
-      top: 10px;
-      left: 15px;
+      top: 10px; /* Adjust base position */
+      left: 15px; /* Adjust base position */
       border: 0;
       color: #fff;
       opacity: 0.7;
       transition: opacity 0.2s ease-in-out;
-      font-size: 1.5em; /* Adjust size */
+      font-size: 1.5em;
       text-decoration: none;
-      z-index: 10; /* Ensure it's clickable */
+      z-index: 10;
   }
-  .blog-back-button:before {
-      /* FontAwesome icon is applied via class */
-  }
-  .blog-back-button:hover {
-      opacity: 1.0;
-      border: 0;
-  }
-  .blog-back-button .label { display: none; } /* Hide text label */
+  .blog-back-button:before { /* FontAwesome icon is applied via class */ }
+  .blog-back-button:hover { opacity: 1.0; border: 0; }
+  .blog-back-button .label { display: none; }
   
+  
+  /* ==============================
+     Blog Responsive Adjustments (Full Width)
+     ============================== */
+  
+  @media screen and (max-width: 768px) { /* Target tablets and phones */
+  
+    .blog-view-wrapper {
+      padding-top: 55px; /* Adjust top padding for button */
+      /* Width/Height remain 100%/100vh */
+    }
+  
+    .blog-scrollable-content {
+      padding: 10px 20px 30px 20px; /* Reduce side padding */
+    }
+  
+    /* Adjust heading sizes */
+    .blog-scrollable-content h1 { font-size: 1.8em; }
+    .blog-scrollable-content h2 { font-size: 1.4em; }
+    .blog-scrollable-content h3 { font-size: 1.15em; }
+  
+    /* Adjust code block font size */
+    .blog-scrollable-content pre,
+    .blog-scrollable-content code { font-size: 0.85em; }
+  
+    /* Adjust back button position/size */
+    .blog-back-button {
+      top: 15px;
+      left: 15px;
+      font-size: 1.4em;
+    }
+  
+    body.blog-page #header { display: none !important; }
+  }
+  
+  @media screen and (max-width: 480px) { /* Target smaller phones */
+  
+      .blog-view-wrapper {
+          padding-top: 50px; /* Adjust top padding */
+          /* Width/Height remain 100%/100vh */
+      }
+  
+      .blog-scrollable-content {
+          padding: 5px 15px 20px 15px; /* Further reduce side padding */
+      }
+  
+      /* Adjust heading sizes */
+      .blog-scrollable-content h1 { font-size: 1.6em; }
+      .blog-scrollable-content h2 { font-size: 1.3em; }
+  
+      /* Adjust back button position/size */
+      .blog-back-button {
+          top: 12px;
+          left: 12px;
+          font-size: 1.3em;
+      }
+  }  
