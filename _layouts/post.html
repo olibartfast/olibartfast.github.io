@@ -1,49 +1,29 @@
 ---
-layout: default # Inherit from the default theme layout
+layout: default # Inherit directly from the hacker theme's default
 ---
-{% include head.html %}
 
-<body id="page-top" class="index">
+<div class="post">
+  <h1 class="post-title">{{ page.title }}</h1>
+  <span class="post-date">{{ page.date | date: "%b %-d, %Y" }}</span>
+  {{ content }}
+</div>
 
-  {% include nav.html %} {# Include theme navigation #}
-
-  {# Custom Post Header - Add padding/background if needed via CSS #}
-  <header class="post-header" style="padding-top: 100px; padding-bottom: 50px; background-color: #f8f9fa;"> {# Example inline style - better in CSS #}
-    <div class="container">
-      <div class="row">
-        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-          <div class="post-heading text-center">
-            <h1>{{ page.title }}</h1>
-            {% if page.subtitle %}
-            <h2 class="subheading" style="font-weight: 300; color: #666;">{{ page.subtitle }}</h2> {# Example inline style #}
-            {% endif %}
-            <span class="meta" style="color: #888; font-style: italic;">Posted on {{ page.date | date: "%B %-d, %Y" }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  {# Main Post Content Section #}
-  <section id="post-content" style="padding: 50px 0;"> {# Example inline style #}
-    <div class="container">
-      <div class="row">
-        {# Use Bootstrap columns for content width and centering #}
-        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-          <article>
-            {# Apply styles for paragraphs, code blocks etc. via main CSS #}
-            {{ content }} {# This is where the Markdown content goes #}
-          </article>
-          <hr style="margin-top: 40px; margin-bottom: 40px;">
-          {# Optional: Add navigation to previous/next post #}
-          {# Optional: Add comments section #}
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {% include footer.html %} {# Include theme footer #}
-  {% include js.html %} {# Include theme JS #}
-
-</body>
-</html>
+{# Optional: Add related posts or other elements if the theme supports them #}
+{# Example: Check theme docs for features like related_posts #}
+{% if site.related_posts.size > 0 %}
+  <div class="related">
+    <h2>Related Posts</h2>
+    <ul class="related-posts">
+      {% for post in site.related_posts limit:3 %}
+        <li>
+          <h3>
+            <a href="{{ post.url | prepend: site.baseurl }}">
+              {{ post.title }}
+              <small>{{ post.date | date: "%b %-d, %Y" }}</small>
+            </a>
+          </h3>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
