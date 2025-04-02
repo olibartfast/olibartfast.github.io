@@ -1,53 +1,42 @@
 ---
-layout: default # Inherit from the default theme layout
+layout: default # Inherit from the default theme layout (which includes head, nav, footer, js)
 ---
 
-{% include head.html %} <!-- Include standard head content -->
+{# --- Post-specific content starts here --- #}
 
-<body id="page-top" class="index">
-
-  {% include nav.html %} <!-- Include theme navigation -->
-
-  <!-- Post Header - Adapt styling as needed -->
-  <header class="post-header">
-    <div class="container">
-      <div class="row">
-        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-          <div class="post-heading text-center">
-            <h1>{{ page.title }}</h1>
-            {% if page.subtitle %}
-            <h2 class="subheading">{{ page.subtitle }}</h2>
-            {% endif %}
-            <span class="meta">Posted on {{ page.date | date: "%B %-d, %Y" }}</span>
-             <!-- Add category/tag links if desired -->
-          </div>
+{# Example Post Header - Adjust structure/classes/styles as needed in CSS #}
+<header class="post-header" style="padding-top: 100px; padding-bottom: 50px; background-color: #f8f9fa;">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <div class="post-heading text-center">
+          <h1>{{ page.title }}</h1>
+          {% if page.subtitle %}
+          <h2 class="subheading" style="font-weight: 300; color: #666;">{{ page.subtitle }}</h2>
+          {% endif %}
+          <span class="meta" style="color: #888; font-style: italic;">Posted on {{ page.date | date: "%B %-d, %Y" }}</span>
         </div>
       </div>
     </div>
-  </header>
+  </div>
+</header>
 
-  <!-- Main Post Content Section -->
-  <section id="post-content">
-    <div class="container">
-      <div class="row">
-        <!-- Use Bootstrap columns for content width -->
-        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-          <article>
-            {{ content }} <!-- This is where the Markdown content goes -->
-          </article>
-
-          <hr>
-          <!-- Optional: Add navigation to previous/next post -->
-          <!-- Optional: Add comments section -->
-
-        </div>
+{# Main Post Content Section #}
+<section id="post-content" style="padding: 50px 0;">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <article>
+          {# The actual post content rendered from Markdown #}
+          {{ content }}
+        </article>
+        <hr style="margin-top: 40px; margin-bottom: 40px;">
+        {# Optional: Add prev/next post links or comments here #}
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  {% include footer.html %} <!-- Include theme footer -->
+{# --- Post-specific content ends here --- #}
 
-  {% include js.html %} <!-- Include theme JS -->
-
-</body>
-</html>
+{# No need to include nav, footer, js again - default.html handles them #}
