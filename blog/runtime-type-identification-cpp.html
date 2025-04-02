@@ -1,0 +1,311 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Blog: Runtime Type Identification in C++ - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- Link back to the main CSS file -->
+    <link rel="stylesheet" href="../css/main.css"/>
+    <!-- Prism Syntax Highlighting Theme CSS (Okaidia Dark Theme) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css">
+</head>
+<!-- Add class to body for specific blog page styling -->
+<body class="blog-page">
+
+    <!-- This outer wrapper helps center the content area -->
+    <div class="blog-view-wrapper">
+
+        <!-- Back button positioned relative to the wrapper -->
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <!-- This inner container will hold the scrollable content -->
+        <div class="blog-scrollable-content">
+
+            <!-- === Blog Article Content Start === -->
+            <h1>Runtime Type Identification and Polymorphism in Modern C++</h1>
+
+            <p>This post explores various techniques for determining the dynamic type of an object at runtime in C++ when dealing with inheritance hierarchies, along with best practices for using polymorphism and smart pointers.</p>
+
+            <h2>Scenario</h2>
+
+            <p>We have a base class <code>A</code> and derived classes <code>B</code> and <code>C</code>:</p>
+
+            <pre><code class="language-text">A (Base Class)
+├── B (Derived Class)
+└── C (Derived Class)</code></pre>
+
+            <p>We want to be able to determine, at runtime, whether a pointer to <code>A</code> is actually pointing to an object of type <code>B</code> or <code>C</code>.</p>
+
+            <h2>Techniques</h2>
+
+            <h3>1. <code>dynamic_cast</code> (Recommended for Safe Downcasting)</h3>
+
+            <p><code>dynamic_cast</code> is the safest and most standard way to perform downcasting in a polymorphic hierarchy.</p>
+
+            <strong>How it works:</strong>
+            <ul>
+                <li>It checks at runtime if the cast is valid.</li>
+                <li>If the cast is valid, it returns a pointer of the target type.</li>
+                <li>If the cast is invalid, it returns <code>nullptr</code> (for pointer casts) or throws a <code>std::bad_cast</code> exception (for reference casts).</li>
+            </ul>
+
+            <strong>Requirements:</strong>
+            <ul>
+                <li>The base class must have at least one virtual function (usually the destructor). This enables Runtime Type Information (RTTI).</li>
+                <li>RTTI must be enabled in your compiler settings (usually enabled by default).</li>
+            </ul>
+
+            <strong>Example with Smart Pointers:</strong>
+            <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+
+class A {
+public:
+    virtual ~A() {} // Important: A must have at least one virtual function
+};
+
+class B : public A {
+public:
+    void bSpecific() { std::cout &lt;&lt; "B specific\n"; }
+};
+
+class C : public A {
+public:
+    void cSpecific() { std::cout &lt;&lt; "C specific\n"; }
+};
+
+int main() {
+    std::unique_ptr&lt;A&gt; aPtr = std::make_unique&lt;B&gt;();
+
+    if (B* bPtr = dynamic_cast&lt;B*&gt;(aPtr.get())) {
+        std::cout &lt;&lt; "aPtr is pointing to an object of type B\n";
+        bPtr-&gt;bSpecific();
+    } else {
+        std::cout &lt;&lt; "aPtr is not pointing to an object of type B\n";
+    }
+
+    if (C* cPtr = dynamic_cast&lt;C*&gt;(aPtr.get())) {
+        std::cout &lt;&lt; "aPtr is pointing to an object of type C\n";
+        cPtr-&gt;cSpecific();
+    } else {
+        std::cout &lt;&lt; "aPtr is not pointing to an object of type C\n";
+    }
+
+    return 0;
+}</code></pre>
+
+            <strong>Pros:</strong>
+            <ul>
+                <li><strong>Safe:</strong> Performs runtime type checking.</li>
+                <li><strong>Standard:</strong> Part of the C++ standard.</li>
+            </ul>
+
+            <strong>Cons:</strong>
+            <ul>
+                <li><strong>Requires RTTI:</strong> Adds a small overhead.</li>
+                <li><strong>Requires Polymorphism:</strong> Base class must have at least one virtual function.</li>
+            </ul>
+
+            <h3>2. <code>typeid</code> and <code>type_info</code> (Less Common for Downcasting)</h3>
+
+            <p><code>typeid</code> returns a reference to a <code>std::type_info</code> object, which contains type information.</p>
+
+            <strong>How it works:</strong>
+            <ul>
+                <li>It allows you to compare the types of objects.</li>
+            </ul>
+
+            <strong>Example with Smart Pointers:</strong>
+            <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;typeinfo&gt;
+
+// ... (A, B, C classes as before)
+
+int main() {
+    std::shared_ptr&lt;A&gt; aPtr = std::make_shared&lt;C&gt;();
+
+    if (typeid(*aPtr) == typeid(B)) {
+        std::cout &lt;&lt; "aPtr is pointing to an object of type B\n";
+    } else if (typeid(*aPtr) == typeid(C)) {
+        std::cout &lt;&lt; "aPtr is pointing to an object of type C\n";
+    } else {
+        std::cout &lt;&lt; "aPtr is pointing to an object of type A or another derived type\n";
+    }
+
+    return 0;
+}</code></pre>
+
+            <strong>Pros:</strong>
+            <ul>
+                <li>Can be used with non-polymorphic classes.</li>
+            </ul>
+
+            <strong>Cons:</strong>
+            <ul>
+                <li><strong>Less safe for downcasting:</strong> <code>typeid</code> only identifies the type; it doesn't perform a cast. You'd need a separate <code>static_cast</code> (unsafe) or <code>dynamic_cast</code> for downcasting.</li>
+                <li><strong>Less readable for complex hierarchies:</strong> Multiple <code>typeid</code> comparisons can become cumbersome.</li>
+            </ul>
+
+            <h3>3. Polymorphism with Virtual Functions (Preferred Design)</h3>
+
+            <p>Instead of explicit type checking, define virtual functions in the base class and override them in derived classes.</p>
+
+            <strong>How it works:</strong>
+            <ul>
+                <li>The correct version of the function is called at runtime based on the object's actual type.</li>
+            </ul>
+
+            <strong>Example with Smart Pointers and Pure Virtual Function:</strong>
+            <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+
+class A {
+public:
+    virtual std::string identify() = 0; // Pure virtual function
+    virtual ~A() {}
+};
+
+class B : public A {
+public:
+    std::string identify() override { return "I am B"; }
+};
+
+class C : public A {
+public:
+    std::string identify() override { return "I am C"; }
+};
+
+int main() {
+    std::unique_ptr&lt;A&gt; aPtr = std::make_unique&lt;B&gt;();
+    std::cout &lt;&lt; aPtr-&gt;identify() &lt;&lt; std::endl;
+
+    std::shared_ptr&lt;A&gt; aPtr2 = std::make_shared&lt;C&gt;();
+    std::cout &lt;&lt; aPtr2-&gt;identify() &lt;&lt; std::endl;
+
+    return 0;
+}</code></pre>
+
+            <strong>Pros:</strong>
+            <ul>
+                <li><strong>Elegant and object-oriented:</strong> Promotes good design.</li>
+                <li><strong>Efficient:</strong> Virtual function calls are usually very efficient.</li>
+                <li><strong>Extensible:</strong> Adding new derived classes doesn't require modifying existing code that uses base class pointers.</li>
+            </ul>
+
+            <strong>Cons:</strong>
+            <ul>
+                <li><strong>Requires design foresight:</strong> You need to anticipate type-specific behavior during design.</li>
+                <li><strong>May not be suitable for all situations:</strong> If you need the exact type for reasons other than calling type-specific behavior, <code>dynamic_cast</code> might be necessary.</li>
+            </ul>
+
+            <h3>4. Using Enums and a Dictionary for Type Identification (Type-Safe and Readable)</h3>
+
+            <p>This approach combines an <code>enum class</code> for type-safe identification with an <code>unordered_map</code> to store string representations of the types.</p>
+
+            <strong>Example with Smart Pointers, Pure Virtual Function, and Enum:</strong>
+            <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;unordered_map&gt;
+
+enum class ClassType {
+    A,
+    B,
+    C
+};
+
+const std::unordered_map&lt;ClassType, std::string&gt; classTypeToString = {
+    {ClassType::A, "Class A"},
+    {ClassType::B, "Class B"},
+    {ClassType::C, "Class C"}
+};
+
+class A {
+public:
+    virtual ClassType identify() = 0;
+    virtual ~A() {}
+};
+
+class B : public A {
+public:
+    ClassType identify() override { return ClassType::B; }
+};
+
+class C : public A {
+public:
+    ClassType identify() override { return ClassType::C; }
+};
+
+int main() {
+    std::unique_ptr&lt;A&gt; aPtr = std::make_unique&lt;B&gt;();
+    ClassType typeB = aPtr-&gt;identify();
+    std::cout &lt;&lt; "Type: " &lt;&lt; classTypeToString.at(typeB) &lt;&lt; std::endl;
+
+    std::shared_ptr&lt;A&gt; aPtr2 = std::make_shared&lt;C&gt;();
+    ClassType typeC = aPtr2-&gt;identify();
+    std::cout &lt;&lt; "Type: " &lt;&lt; classTypeToString.at(typeC) &lt;&lt; std::endl;
+
+    return 0;
+}</code></pre>
+
+            <strong>Pros:</strong>
+            <ul>
+                <li><strong>Type-safe:</strong> <code>enum class</code> provides type safety.</li>
+                <li><strong>Readable:</strong> <code>ClassType</code> enum and <code>classTypeToString</code> map make the code self-documenting.</li>
+                <li><strong>Maintainable:</strong> Easy to add new classes.</li>
+                <li><strong>Efficient:</strong> <code>std::unordered_map</code> provides fast lookups.</li>
+                <li><strong>Flexible:</strong> <code>ClassType</code> enum can be used for various purposes.</li>
+            </ul>
+
+            <strong>Cons:</strong>
+            <ul>
+                <li>Requires a bit more setup compared to just using <code>dynamic_cast</code>.</li>
+            </ul>
+
+            <h3>5. Adding a Type Identifier (Generally Discouraged)</h3>
+
+            <p>Manually adding a type identifier (e.g., an enum or string member) to the base class is generally <strong>not recommended</strong>.</p>
+
+            <strong>Cons:</strong>
+            <ul>
+                <li><strong>Error-prone:</strong> Manual management of type identifiers can lead to errors.</li>
+                <li><strong>Not scalable:</strong> Cumbersome to maintain with many derived classes.</li>
+                <li><strong>Violates the Open/Closed Principle:</strong> Adding new derived classes requires modifying the base class.</li>
+            </ul>
+
+            <h2>Recommendations</h2>
+
+            <ol>
+                <li><strong>Prefer polymorphism (virtual functions) whenever possible.</strong> It's the most object-oriented and efficient approach for handling type-specific behavior.</li>
+                <li><strong>Use <code>dynamic_cast</code> when you need to know the exact type for reasons other than calling type-specific behavior.</strong> It's safe and standard.</li>
+                <li><strong>Consider enums and a dictionary for type identification when type safety, readability, and maintainability are high priorities.</strong></li>
+                <li><strong>Avoid <code>typeid</code> unless you have a specific reason to use it and understand its limitations for downcasting.</strong></li>
+                <li><strong>Do not use manual type identifiers.</strong> They are error-prone and lead to less maintainable code.</li>
+            </ol>
+
+            <h2>Smart Pointers</h2>
+
+            <p>Throughout these examples, we've used smart pointers (<code>std::unique_ptr</code> and <code>std::shared_ptr</code>) for automatic memory management.</p>
+
+            <ul>
+                <li><strong><code>std::unique_ptr</code>:</strong> Represents exclusive ownership. Use when you have a clear single owner.</li>
+                <li><strong><code>std::shared_ptr</code>:</strong> Represents shared ownership using reference counting. Use when multiple parts of your code need to share ownership.</li>
+            </ul>
+
+            <p>Using smart pointers is crucial for writing safe and robust modern C++ code. They prevent memory leaks and dangling pointers, making your programs more reliable.</p>
+            <!-- === Blog Article Content End === -->
+
+        </div> <!-- / .blog-scrollable-content -->
+
+    </div> <!-- / .blog-view-wrapper -->
+
+    <!-- Prism Syntax Highlighting JS (Core + C++) -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+
+</body>
+</html>
