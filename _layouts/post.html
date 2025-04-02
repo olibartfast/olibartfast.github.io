@@ -1,42 +1,49 @@
 ---
-layout: default # Inherit from the default theme layout (which includes head, nav, footer, js)
+layout: default # Inherit from the default theme layout
 ---
+{% include head.html %}
 
-{# --- Post-specific content starts here --- #}
+<body id="page-top" class="index">
 
-{# Example Post Header - Adjust structure/classes/styles as needed in CSS #}
-<header class="post-header" style="padding-top: 100px; padding-bottom: 50px; background-color: #f8f9fa;">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-        <div class="post-heading text-center">
-          <h1>{{ page.title }}</h1>
-          {% if page.subtitle %}
-          <h2 class="subheading" style="font-weight: 300; color: #666;">{{ page.subtitle }}</h2>
-          {% endif %}
-          <span class="meta" style="color: #888; font-style: italic;">Posted on {{ page.date | date: "%B %-d, %Y" }}</span>
+  {% include nav.html %} {# Include theme navigation #}
+
+  {# Custom Post Header - Add padding/background if needed via CSS #}
+  <header class="post-header" style="padding-top: 100px; padding-bottom: 50px; background-color: #f8f9fa;"> {# Example inline style - better in CSS #}
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+          <div class="post-heading text-center">
+            <h1>{{ page.title }}</h1>
+            {% if page.subtitle %}
+            <h2 class="subheading" style="font-weight: 300; color: #666;">{{ page.subtitle }}</h2> {# Example inline style #}
+            {% endif %}
+            <span class="meta" style="color: #888; font-style: italic;">Posted on {{ page.date | date: "%B %-d, %Y" }}</span>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</header>
+  </header>
 
-{# Main Post Content Section #}
-<section id="post-content" style="padding: 50px 0;">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-        <article>
-          {# The actual post content rendered from Markdown #}
-          {{ content }}
-        </article>
-        <hr style="margin-top: 40px; margin-bottom: 40px;">
-        {# Optional: Add prev/next post links or comments here #}
+  {# Main Post Content Section #}
+  <section id="post-content" style="padding: 50px 0;"> {# Example inline style #}
+    <div class="container">
+      <div class="row">
+        {# Use Bootstrap columns for content width and centering #}
+        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+          <article>
+            {# Apply styles for paragraphs, code blocks etc. via main CSS #}
+            {{ content }} {# This is where the Markdown content goes #}
+          </article>
+          <hr style="margin-top: 40px; margin-bottom: 40px;">
+          {# Optional: Add navigation to previous/next post #}
+          {# Optional: Add comments section #}
+        </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-{# --- Post-specific content ends here --- #}
+  {% include footer.html %} {# Include theme footer #}
+  {% include js.html %} {# Include theme JS #}
 
-{# No need to include nav, footer, js again - default.html handles them #}
+</body>
+</html>
