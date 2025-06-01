@@ -7,20 +7,31 @@
     <!-- Link back to the main CSS file -->
     <link rel="stylesheet" href="../css/main.css"/>
     <style>
+        .blog-content {
+            font-size: 1.1rem;  /* Larger base font size for article content */
+            line-height: 1.6;   /* Increased line height for better readability */
+        }
+
         .cmake-snippet {
-            background: #2b2b2b;  /* Darker background */
+            background: #2b2b2b;
             border: 1px solid #ddd;
             border-radius: 4px;
             padding: 15px;
             margin: 15px 0;
             overflow-x: auto;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1.1rem;  /* Increased font size for code blocks */
         }
 
         .cmake-snippet code {
             display: block;
             line-height: 1.5;
-            color: #f8f8f2;  /* Light colored text for contrast */
+            color: #f8f8f2;
+        }
+
+        /* Make inline code consistent with code blocks */
+        code {
+            font-size: 1.1rem;
         }
     </style>
 </head>
