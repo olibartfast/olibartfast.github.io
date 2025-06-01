@@ -1,0 +1,271 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Demystifying CMakeLists.txt - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- Link back to the main CSS file -->
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .cmake-snippet {
+            background: #2b2b2b;  /* Darker background */
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .cmake-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;  /* Light colored text for contrast */
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <!-- This outer wrapper helps center the content area -->
+    <div class="blog-view-wrapper">
+
+        <!-- Back button positioned relative to the wrapper -->
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <!-- This inner container will hold the scrollable content -->
+        <div class="blog-scrollable-content">
+
+            <h1>Demystifying CMakeLists.txt: A Guide to its Core Components</h1>
+            <p class="post-meta">Posted on June 1, 2025</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>If you're diving into C++ development, especially for projects that need to work across different operating systems or with complex dependencies, you've likely encountered CMake. At the heart of every CMake-based project lies a crucial file: <code>CMakeLists.txt</code>. This unassuming text file is the brain of your build process, telling CMake exactly how to configure, build, and even install your software.</p>
+                
+                <p>Understanding the main components of a <code>CMakeLists.txt</code> file can feel daunting at first, but once you grasp the key commands, you'll unlock a powerful way to manage your C++ projects. Let's break down the essential building blocks!</p>
+
+                <section class="blog-section">
+                    <h2>1. Setting the Stage: <code>cmake_minimum_required</code></h2>
+                    <p>Every good story needs a beginning, and for <code>CMakeLists.txt</code>, that's <code>cmake_minimum_required</code>.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">cmake_minimum_required(VERSION 3.10)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: This command specifies the oldest version of CMake that can correctly process your <code>CMakeLists.txt</code> file. It ensures that you're using CMake features that are actually available.</li>
+                        <li><strong>Why it's important</strong>: CMake evolves, adding new features and changing behaviors. This line prevents users with older CMake versions from encountering cryptic errors. It's almost always the very first line in your file.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>2. Naming Your Masterpiece: <code>project</code></h2>
+                    <p>Next, you give your project an identity.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">project(MyAwesomeApp VERSION 1.2.0 LANGUAGES CXX C)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: The <code>project()</code> command sets the name of your project. You can also optionally specify a version number and the programming languages used (e.g., <code>CXX</code> for C++, <code>C</code> for C).</li>
+                        <li><strong>Why it's important</strong>: This name is used in various places by CMake, such as in generated project files for IDEs (like Visual Studio solutions or Xcode projects) and in install paths.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>3. Variables, Variables Everywhere: <code>set</code></h2>
+                    <p>CMake is all about variables. The <code>set</code> command is your primary tool for creating and assigning values to them.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">set(CMAKE_CXX_STANDARD 17) # Request C++17 standard
+set(MY_CUSTOM_OPTION ON CACHE BOOL "Enable my custom feature")
+set(SOURCE_FILES main.cpp utils.cpp)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: It assigns a value to a variable. CMake has many built-in variables (like <code>CMAKE_CXX_STANDARD</code>), and you'll define many of your own to hold source file lists, options, paths, etc. <code>CACHE</code> variables are special as they are stored in CMake's cache and can be configured by the user when running CMake.</li>
+                        <li><strong>Why it's important</strong>: Variables make your build scripts flexible, readable, and maintainable.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>4. Building Executables: <code>add_executable</code></h2>
+                    <p>This is where you tell CMake to create a program that users can run.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">add_executable(MyApp main.cpp app_logic.cpp ui_components.cpp)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: It defines an executable target. You provide a name for your executable (e.g., <code>MyApp</code>) and then list all the source files (<code>.cpp</code>, <code>.c</code>) required to build it.</li>
+                        <li><strong>Why it's important</strong>: This is fundamental for any application you want to produce.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>5. Creating Reusable Code: <code>add_library</code></h2>
+                    <p>For code that you want to reuse across different executables or even other projects, you'll create libraries.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">add_library(MyUtils STATIC utils.cpp helpers.cpp) # A static library
+add_library(CoreFeatures SHARED core_feature1.cpp core_feature2.cpp) # A shared library</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: It defines a library target. Libraries can be <code>STATIC</code> (code is copied into the target that links against it at compile time) or <code>SHARED</code> (loaded at runtime, also known as DLLs on Windows or .so files on Linux). There's also <code>MODULE</code> for plugins.</li>
+                        <li><strong>Why it's important</strong>: Libraries promote modular design, code reuse, and can significantly speed up compilation times for large projects.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>6. Telling the Compiler Where to Look: <code>target_include_directories</code></h2>
+                    <p>When your code uses <code>#include &lt;my_header.h&gt;</code>, the compiler needs to know where to find <code>my_header.h</code>.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">target_include_directories(MyApp PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "vendor/some_library/include"
+)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: This command specifies directories where the compiler should search for header files for a given target (like <code>MyApp</code>).</li>
+                        <li><strong>Keywords (<code>PUBLIC</code>, <code>PRIVATE</code>, <code>INTERFACE</code>)</strong>:
+                            <ul>
+                                <li><code>PRIVATE</code>: The include directories are only for compiling <code>MyApp</code> itself.</li>
+                                <li><code>PUBLIC</code>: The include directories are for <code>MyApp</code> AND any other target that links against <code>MyApp</code>.</li>
+                                <li><code>INTERFACE</code>: The include directories are ONLY for targets that link against <code>MyApp</code>, not for <code>MyApp</code> itself.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Why it's important</strong>: Essential for organizing your project and using third-party libraries.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>7. Linking it All Together: <code>target_link_libraries</code></h2>
+                    <p>Your executable or library often depends on other libraries (either those you've built or external ones).</p>
+                    <pre class="cmake-snippet"><code class="language-cmake"># Assuming MyUtils is a library defined with add_library()
+target_link_libraries(MyApp PRIVATE MyUtils)
+
+# Linking against a library found by find_package (see below)
+# find_package(Boost REQUIRED COMPONENTS system)
+# target_link_libraries(MyApp PRIVATE Boost::system)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Specifies which libraries a target needs to link against. The <code>PUBLIC</code>, <code>PRIVATE</code>, and <code>INTERFACE</code> keywords work similarly to <code>target_include_directories</code>, controlling how link dependencies are propagated.</li>
+                        <li><strong>Why it's important</strong>: This is how you connect different pieces of your project and incorporate external code.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>8. Defining Your Code's Behavior: <code>target_compile_definitions</code></h2>
+                    <p>Sometimes you need to pass preprocessor definitions (like <code>#define DEBUG</code>) to your compiler.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">target_compile_definitions(MyApp PRIVATE "DEBUG" "VERSION_STRING=\"1.0\"" "USE_FEATURE_X")</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Adds compile definitions for a target. These are effectively <code>-D</code> flags passed to the compiler.</li>
+                        <li><strong>Why it's important</strong>: Useful for conditional compilation (e.g., enabling debug-only code) or embedding version information.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>9. Fine-Tuning Compilation: <code>target_compile_options</code></h2>
+                    <p>This command lets you pass specific flags directly to the compiler.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">target_compile_options(MyUtils PRIVATE -Wall -Wextra -pedantic) # Common GCC/Clang warning flags</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Adds compiler-specific options for a target.</li>
+                        <li><strong>Why it's important</strong>: Allows you to enable warnings, optimizations, or other compiler-specific features. Be mindful that these can be compiler-dependent.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>10. Finding External Friends: <code>find_package</code></h2>
+                    <p>Modern projects rarely live in isolation. <code>find_package</code> helps CMake locate and use external libraries and tools.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Boost 1.70 REQUIRED COMPONENTS system filesystem)
+find_package(Threads REQUIRED)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Searches for an installed package (like Qt, Boost, OpenSSL, etc.). If <code>REQUIRED</code> is specified and the package isn't found, CMake will stop with an error.</li>
+                        <li><strong>Why it's important</strong>: This is the standard way to integrate third-party libraries into your build, providing their include directories, libraries to link against, and sometimes even compiler flags.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>11. Structuring Your Project: <code>add_subdirectory</code></h2>
+                    <p>For larger projects, you'll often break down your <code>CMakeLists.txt</code> into smaller, more manageable pieces in subdirectories.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">add_subdirectory(src)       # Assumes a CMakeLists.txt exists in the 'src' folder
+add_subdirectory(tests)     # And another one in the 'tests' folder
+add_subdirectory(libs/my_custom_lib)</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Tells CMake to process another <code>CMakeLists.txt</code> file located in a subdirectory. This helps in organizing large projects into logical modules.</li>
+                        <li><strong>Why it's important</strong>: Promotes modularity and keeps your main <code>CMakeLists.txt</code> cleaner.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>12. Including More CMake Code: <code>include</code></h2>
+                    <p>Sometimes you have utility CMake scripts or want to use standard CMake modules.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">include(CTest) # Enables testing capabilities via CTest
+include(GNUInstallDirs) # Provides standard installation directory variables like CMAKE_INSTALL_BINDIR</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Loads and runs CMake code from another file or a CMake-provided module.</li>
+                        <li><strong>Why it's important</strong>: Allows for code reuse within your build scripts and access to powerful CMake modules for common tasks like testing or packaging.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>13. Controlling the Flow: <code>if</code>, <code>foreach</code>, <code>while</code></h2>
+                    <p>CMake isn't just a list of commands; it's a scripting language with control flow.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Building in Debug mode with extra checks.")
+    target_compile_definitions(MyApp PRIVATE DEBUG_MODE)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Building in Release mode with optimizations.")
+endif()
+
+set(MY_MODULES A B C)
+foreach(MOD ${MY_MODULES})
+    add_subdirectory(module_${MOD})
+endforeach()</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Provides conditional logic (<code>if/else/endif</code>), loops (<code>foreach/endforeach</code>, <code>while/endwhile</code>), allowing your build to adapt to different situations, platforms, or options.</li>
+                        <li><strong>Why it's important</strong>: Makes your build scripts dynamic and adaptable.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>14. Ready for Deployment: <code>install</code></h2>
+                    <p>Once your project is built, you'll often want to install it to a system location or a packaging directory.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake">install(TARGETS MyApp MyLib
+    RUNTIME DESTINATION bin          # Executables go to 'bin'
+    LIBRARY DESTINATION lib          # Shared/Static libraries go to 'lib'
+    ARCHIVE DESTINATION lib          # Static libraries on Windows
+)
+install(FILES "config/default.json" DESTINATION "etc/${PROJECT_NAME}")
+install(DIRECTORY "include/" DESTINATION "include/${PROJECT_NAME}" FILES_MATCHING PATTERN "*.h")</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Defines rules for what gets installed and where when someone runs the <code>install</code> build step (e.g., <code>make install</code> or <code>cmake --install .</code>). You can install targets (executables, libraries), files, and entire directories.</li>
+                        <li><strong>Why it's important</strong>: Crucial for distributing your software or for making it available system-wide.</li>
+                    </ul>
+                </section>
+
+                <section class="blog-section">
+                    <h2>15. Don't Forget the Comments: <code>#</code></h2>
+                    <p>Last but not least, good code is documented code.</p>
+                    <pre class="cmake-snippet"><code class="language-cmake"># This is a comment explaining the purpose of the next block
+# set(OLD_FEATURE_FLAG OFF) # Temporarily disabling an old feature</code></pre>
+                    <ul>
+                        <li><strong>What it does</strong>: Lines starting with <code>#</code> are ignored by CMake.</li>
+                        <li><strong>Why it's important</strong>: Use comments to explain complex parts of your script, document your intentions, or temporarily disable lines of code. Your future self (and your colleagues) will thank you!</li>
+                    </ul>
+                </section>
+            </article>
+
+            <section class="blog-section">
+                <h3>Further Reading</h3>
+                <ul>
+                    <li><strong>Official Documentation</strong>: 
+                        <ul>
+                            <li><a href="https://cmake.org/documentation/">CMake Documentation</a> - The comprehensive reference guide</li>
+                            <li><a href="https://cmake.org/cmake/help/latest/guide/tutorial/index.html">CMake Tutorial</a> - Step-by-step introduction from the CMake team</li>
+                        </ul>
+                    </li>
+                    <li><strong>Books</strong>:
+                        <ul>
+                            <li>"Professional CMake: A Practical Guide" by Craig Scott - A thorough guide to CMake best practices</li>
+                            <li>"CMake Cookbook" by Radovan Bast and Roberto Di Remigio - Practical recipes for building C/C++ projects</li>
+                        </ul>
+                    </li>
+                    <li><strong>Modern CMake Resources</strong>:
+                        <ul>
+                            <li><a href="https://cliutils.gitlab.io/modern-cmake/">Modern CMake</a> - An excellent online book about modern CMake practices</li>
+                            <li><a href="https://github.com/onqtam/awesome-cmake">Awesome CMake</a> - A curated list of awesome CMake resources</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <h3>Wrapping Up</h3>
+            <p>While this covers the main components, CMake is a vast system with many more commands and modules. However, mastering these core elements will give you a solid foundation for tackling most C++ project build configurations. The best way to learn is to start experimenting. Create a small project, try out these commands, and see how they influence the build process. Happy building!</p>
+
+        </div> <!-- / .blog-scrollable-content -->
+    </div> <!-- / .blog-view-wrapper -->
+
+</body>
+</html>
