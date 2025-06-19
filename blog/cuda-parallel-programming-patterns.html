@@ -1,0 +1,225 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Parallel Programming Pattern Fundamentals in CUDA - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- Link back to the main CSS file -->
+    <link rel="stylesheet" href="../css/main.css"/>
+    <!-- Prism Syntax Highlighting Theme CSS (Okaidia Dark Theme) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css">
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .cuda-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1.1rem;
+        }
+
+        .cuda-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        code {
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+            <h1>Parallel Programming Pattern Fundamentals in CUDA</h1>
+            <p class="post-meta">Posted on June 20, 2025</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>This article outlines the core parallel programming patterns (cornerstones) used in CUDA to leverage modern NVIDIA GPU architectures. These patterns are fundamental for exploiting CUDA's Single Instruction, Multiple Thread (SIMT) execution model, memory hierarchy, and advanced thread management features for efficient parallel computation.</p>
+
+                <p>A key theme in modern CUDA development is the use of highly optimized libraries. For many common patterns, NVIDIA <strong>CUB</strong> provides state-of-the-art implementations. While the original standalone <a href="https://github.com/NVIDIA/cub">CUB repository</a> is now archived, <strong>CUB is actively maintained as part of the <a href="https://github.com/NVIDIA/cccl">CUDA C++ Core Libraries (CCCL)</a></strong>. CCCL unifies CUB, Thrust, and libcu++ into a cohesive standard library included in every CUDA Toolkit. Using libraries like CUB is the recommended best practice for achieving maximum performance and reliability.</p>
+
+                <h2>1. Reduction</h2>
+                <p><strong>Description:</strong> Aggregates a dataset into a single value (e.g., sum, min, max) using a hierarchical, parallel approach.</p>
+                <p><strong>CUDA Relevance:</strong> Utilizes shared memory and thread synchronization to perform partial reductions at the block level, minimizing costly global memory accesses. A second kernel or a grid-striding loop often combines these partial results.</p>
+                <p><strong>Use Cases:</strong> Summing arrays, finding maxima, computing vector norms.</p>
+
+                <h3>Key Considerations</h3>
+                <ul>
+                    <li>Minimize thread divergence within warps</li>
+                    <li>Use tree-based reduction for efficiency</li>
+                    <li>Leverage shared memory to reduce global memory latency</li>
+                </ul>
+
+                <h3>Modern Practice</h3>
+                <ul>
+                    <li>Use <code>cub::DeviceReduce</code> from the CCCL-integrated CUB library for production</li>
+                    <li>Perform reduction in two stages: block-level, then global</li>
+                </ul>
+
+                <h3>Example: Block-Level Reduction</h3>
+                <pre class="cuda-snippet"><code class="language-cpp">__global__ void sumReduction(float *input, float *output, int n) {
+    extern __shared__ float sdata[];
+    int tid = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    sdata[tid] = (i < n) ? input[i] : 0;
+    __syncthreads();
+
+    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sdata[tid] += sdata[tid + s];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) output[blockIdx.x] = sdata[0];
+}</code></pre>
+
+                <h2>2. Prefix Scan (Parallel Scan)</h2>
+                <p><strong>Description:</strong> Computes cumulative results across an array (e.g., inclusive/exclusive prefix sum) where each element depends on all prior inputs.</p>
+                <p><strong>CUDA Relevance:</strong> Essential in stream compaction, sorting, and memory allocation.</p>
+                <p><strong>Use Cases:</strong> Running totals, partitioning, histogram equalization.</p>
+
+                <h3>Key Considerations</h3>
+                <ul>
+                    <li>Use Hillis-Steele or Blelloch algorithms</li>
+                    <li>Requires fine-grained synchronization</li>
+                </ul>
+
+                <h3>Modern Practice</h3>
+                <ul>
+                    <li>Use <code>cub::DeviceScan</code>, which includes inclusive and exclusive variants</li>
+                    <li>Supports decoupled look-back for low-latency, memcpy-like performance</li>
+                </ul>
+
+                <h2>3. Map</h2>
+                <p><strong>Description:</strong> Applies a function independently to each element in a dataset.</p>
+                <p><strong>CUDA Relevance:</strong> Ideal for CUDA's thread-level parallelism.</p>
+                <p><strong>Use Cases:</strong> Element-wise operations like scaling, filtering, or transformations.</p>
+
+                <h3>Example</h3>
+                <pre class="cuda-snippet"><code class="language-cpp">__global__ void mapScale(float *input, float *output, float scale, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        output[idx] = input[idx] * scale;
+    }
+}</code></pre>
+
+                <h2>4. Tiled Partitioning</h2>
+                <p><strong>Description:</strong> Splits data into tiles that fit in shared memory to reduce global memory traffic and improve data reuse.</p>
+                <p><strong>CUDA Relevance:</strong> Crucial for memory-bound algorithms like GEMM and convolutions.</p>
+                <p><strong>Use Cases:</strong> Tiled matrix multiplication, convolutions.</p>
+
+                <h3>Modern Practice</h3>
+                <ul>
+                    <li><strong>Use Tensor Cores</strong> via cuBLAS or WMMA API</li>
+                    <li>Tune tile sizes per GPU architecture (e.g., Hopper, Ampere)</li>
+                </ul>
+
+                <h2>5. Stencil</h2>
+                <p><strong>Description:</strong> Each element is updated based on neighboring values.</p>
+                <p><strong>CUDA Relevance:</strong> Common in PDE solvers, image processing.</p>
+                <p><strong>Use Cases:</strong> Gaussian blur, edge detection, heat diffusion.</p>
+
+                <h3>Key Considerations</h3>
+                <ul>
+                    <li>Cache halos/ghost zones in shared memory</li>
+                    <li>Handle boundary conditions efficiently</li>
+                </ul>
+
+                <h2>6. Gather/Scatter</h2>
+                <p><strong>Description:</strong></p>
+                <ul>
+                    <li><strong>Gather:</strong> Reads from arbitrary indices</li>
+                    <li><strong>Scatter:</strong> Writes to arbitrary indices</li>
+                </ul>
+                <p><strong>CUDA Relevance:</strong> Enables irregular memory access patterns like sparse ops.</p>
+                <p><strong>Use Cases:</strong> Histogramming, graph processing, sparse matrix ops.</p>
+
+                <h3>Example: Histogram with Scatter</h3>
+                <pre class="cuda-snippet"><code class="language-cpp">__global__ void histogram(unsigned int *input, int *bins, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        atomicAdd(&bins[input[idx]], 1);
+    }
+}</code></pre>
+
+                <h2>7. Cooperative Groups</h2>
+                <p><strong>Description:</strong> Allows group-level synchronization and coordination beyond thread blocks.</p>
+                <p><strong>CUDA Relevance:</strong> Enables grid-wide reductions, persistent kernels.</p>
+                <p><strong>Use Cases:</strong> Grid-level synchronization, producer-consumer models.</p>
+
+                <h2>8. Warp-Level Primitives</h2>
+                <p><strong>Description:</strong> Enables communication within a warp without shared memory.</p>
+                <p><strong>CUDA Relevance:</strong> Very low-latency; great for warp-local reductions or ballots.</p>
+
+                <h3>Example: Warp Reduction</h3>
+                <pre class="cuda-snippet"><code class="language-cpp">__device__ float warpReduceSum(float val) {
+    for (int offset = 16; offset > 0; offset /= 2) {
+        val += __shfl_down_sync(0xFFFFFFFF, val, offset);
+    }
+    return val;
+}</code></pre>
+
+                <h2>9. Stream Parallelism</h2>
+                <p><strong>Description:</strong> Uses CUDA streams to overlap data transfers and computation.</p>
+                <p><strong>CUDA Relevance:</strong> Maximizes throughput by exploiting concurrency.</p>
+                <p><strong>Use Cases:</strong> Pipeline processing of datasets, latency hiding.</p>
+
+                <h2>General Optimization Tips</h2>
+
+                <h3>Libraries</h3>
+                <ul>
+                    <li>Prefer CUB, cuBLAS, cuFFT, or cuDNN over hand-written kernels</li>
+                </ul>
+
+                <h3>Memory</h3>
+                <ul>
+                    <li>Coalesce global memory accesses across warps</li>
+                    <li>Use shared memory as a fast user-managed cache</li>
+                </ul>
+
+                <h3>Synchronization</h3>
+                <ul>
+                    <li>Use <code>__syncthreads()</code> and warp-sync intrinsics judiciously</li>
+                    <li>Avoid unnecessary barriers to maintain pipeline efficiency</li>
+                </ul>
+
+                <h3>Profiling</h3>
+                <ul>
+                    <li>Use Nsight Compute or Visual Profiler to identify bottlenecks</li>
+                    <li>Tune for occupancy, memory throughput, and instruction efficiency</li>
+                </ul>
+
+                <h2>References</h2>
+                <ul>
+                    <li><a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/">NVIDIA CUDA Programming Guide</a></li>
+                    <li><a href="https://github.com/NVIDIA/cuda-samples">CUDA Samples</a></li>
+                    <li><a href="https://github.com/NVIDIA/cccl/tree/main/cub">CUB in CCCL</a></li>
+                    <li><a href="https://developer.nvidia.com/nsight-compute">Nsight Compute</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+</body>
+</html>
