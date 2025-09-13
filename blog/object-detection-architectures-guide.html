@@ -1,0 +1,615 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Object Detection Architectures Guide - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- Link back to the main CSS file -->
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem;
+            color: #f8f8f2;
+        }
+
+        .architecture-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            background: #2b2b2b;
+            color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .architecture-table th,
+        .architecture-table td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+
+        .architecture-table th {
+            background: #1a1a1a;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .architecture-table tr:hover {
+            background: #333;
+        }
+
+        .quick-selection {
+            background: #2b2b2b;
+            border-left: 4px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+            border-radius: 4px;
+        }
+
+        .family-section {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            color: #ffffff;
+        }
+
+        .evolution-timeline {
+            background: #1a1a1a;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #ffffff;
+        }
+
+        .strengths-weaknesses {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .strengths, .weaknesses {
+            background: #2b2b2b;
+            padding: 15px;
+            border-radius: 6px;
+            color: #ffffff;
+        }
+
+        .strengths {
+            border-left: 4px solid #28a745;
+        }
+
+        .weaknesses {
+            border-left: 4px solid #dc3545;
+        }
+
+        .deployment-notes {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .references-list {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #333;
+        }
+
+        .references-list a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .references-list a:hover {
+            text-decoration: underline;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #333;
+        }
+
+        .toc ul {
+            list-style-type: disc;
+            margin-left: 20px;
+        }
+
+        .toc a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .strengths-weaknesses {
+                grid-template-columns: 1fr;
+            }
+            
+            .architecture-table {
+                font-size: 0.8rem;
+            }
+            
+            .architecture-table th,
+            .architecture-table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+            <h1>Object Detection Architectures Guide</h1>
+            <p class="post-meta">Posted on September 14, 2025</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>Object detection is one of the most fundamental tasks in computer vision, with applications ranging from autonomous driving to medical imaging. This comprehensive guide explores the major detector families, their architectures, trade-offs, and deployment considerations to help you choose the right approach for your project.</p>
+
+                <div class="toc">
+                    <h2>Table of Contents</h2>
+                    <ul>
+                        <li><a href="#at-a-glance-selection">At-a-Glance Selection</a></li>
+                        <li><a href="#yolo-family">YOLO Family</a></li>
+                        <li><a href="#rt-detr-family">RT-DETR Family</a></li>
+                        <li><a href="#yolo-nas">YOLO-NAS</a></li>
+                        <li><a href="#specialized-architectures">Specialized Architectures</a></li>
+                        <li><a href="#architecture-comparison">Architecture Comparison Summary</a></li>
+                        <li><a href="#deployment-notes">Deployment Notes</a></li>
+                        <li><a href="#references">References</a></li>
+                    </ul>
+                </div>
+
+                <section id="at-a-glance-selection" class="blog-section">
+                    <h2>At-a-Glance Selection</h2>
+                    <div class="quick-selection">
+                        <ul>
+                            <li><strong>Edge real-time (balanced speed/accuracy):</strong> YOLOv8/YOLO11 (S/M) or YOLO-NAS (with QAT) 🚀</li>
+                            <li><strong>Highest accuracy on server GPUs:</strong> RT-DETR variants or transformer-based refinements 🧠</li>
+                            <li><strong>NMS-free pipeline:</strong> YOLOv10 or RT-DETR ✅</li>
+                            <li><strong>Tight memory/latency budget:</strong> YOLO-NAS with quantization, or small YOLO models 📦</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="yolo-family" class="blog-section">
+                    <h2>YOLO Family</h2>
+                    <div class="family-section">
+                        <p>YOLO ("You Only Look Once") is a family of single-stage detectors optimized for speed. Predictions are made densely over feature maps, producing bounding boxes and classes in one forward pass.</p>
+
+                        <h3>Architecture and Core Idea</h3>
+                        <ul>
+                            <li><strong>Early YOLO (v1–v2):</strong> Grid-based predictions (S×S cells); each cell predicts a fixed number of boxes, objectness, and class probabilities. v2 introduces anchors (dimension clustering), BN, and a stronger backbone.</li>
+                            <li><strong>Modern YOLO (v3+):</strong> Dense predictions on multi-scale feature maps (FPN/PAN-like necks). Anchor-based heads (v2–v7) → anchor-free heads (v8+). Decoupled heads for classification vs box regression are common (v6+). Inference typically uses NMS; YOLOv10 is NMS-free by design.</li>
+                        </ul>
+
+                        <h3>Evolution Timeline</h3>
+                        <div class="evolution-timeline">
+                            <h4>YOLOv1 (2016)</h4>
+                            <ul>
+                                <li><strong>Innovation:</strong> Single-shot detection paradigm</li>
+                                <li><strong>Architecture:</strong> CNN with fully connected detection head</li>
+                                <li><strong>Limitation:</strong> Struggles with small objects and precise localization</li>
+                            </ul>
+
+                            <h4>YOLOv2 / YOLO9000 (2017)</h4>
+                            <ul>
+                                <li><strong>Improvements:</strong> Anchor boxes, BN, higher-resolution pretraining</li>
+                                <li><strong>Backbone:</strong> Darknet-19</li>
+                            </ul>
+
+                            <h4>YOLOv3 (2018)</h4>
+                            <ul>
+                                <li><strong>Key Changes:</strong> Multi-scale predictions (FPN-style), 3 detection layers</li>
+                                <li><strong>Backbone:</strong> Darknet-53 with residuals</li>
+                                <li><strong>Loss:</strong> BCE/logistic for multi-label classification</li>
+                            </ul>
+
+                            <h4>YOLOv4 (2020)</h4>
+                            <ul>
+                                <li><strong>Backbone:</strong> CSPDarknet53 (better gradient flow)</li>
+                                <li><strong>Neck:</strong> SPP + PANet</li>
+                                <li><strong>Training:</strong> Mosaic, CutMix, DropBlock; Mish activations</li>
+                            </ul>
+
+                            <h4>YOLOv5 (2020)</h4>
+                            <ul>
+                                <li><strong>Notes:</strong> Popular PyTorch implementation (no official paper)</li>
+                                <li><strong>Architecture:</strong> CSP bottlenecks; AutoAnchor; evolved training pipeline</li>
+                            </ul>
+
+                            <h4>YOLOv6 (2022)</h4>
+                            <ul>
+                                <li><strong>Focus:</strong> Industrial deployment</li>
+                                <li><strong>Blocks:</strong> RepVGG-style reparameterizable convs</li>
+                                <li><strong>Head:</strong> Decoupled classification/localization heads</li>
+                                <li><strong>Label Assignment:</strong> SimOTA</li>
+                            </ul>
+
+                            <h4>YOLOv7 (2022)</h4>
+                            <ul>
+                                <li><strong>E-ELAN:</strong> Extended Efficient Layer Aggregation Networks</li>
+                                <li><strong>Training:</strong> Trainable bag-of-freebies; optional auxiliary heads</li>
+                            </ul>
+
+                            <h4>YOLOv8 (2023)</h4>
+                            <ul>
+                                <li><strong>Features:</strong> Anchor-free heads; C2f modules; decoupled head</li>
+                                <li><strong>Unified tasks:</strong> detection, segmentation, classification, pose</li>
+                            </ul>
+
+                            <h4>YOLOv9 (2024)</h4>
+                            <ul>
+                                <li><strong>PGI:</strong> Programmable Gradient Information</li>
+                                <li><strong>GELAN:</strong> Generalized Efficient Layer Aggregation Network</li>
+                            </ul>
+
+                            <h4>YOLOv10 (2024)</h4>
+                            <ul>
+                                <li><strong>NMS-free:</strong> One-to-many + one-to-one dual assignments</li>
+                                <li><strong>Efficiency:</strong> Reduced post-processing latency</li>
+                            </ul>
+
+                            <h4>YOLO11 (2024)</h4>
+                            <ul>
+                                <li><strong>Latest:</strong> Ultralytics release (successor to YOLOv8)</li>
+                                <li><strong>Features:</strong> Anchor-free heads, C2f-style components</li>
+                            </ul>
+                        </div>
+
+                        <div class="strengths-weaknesses">
+                            <div class="strengths">
+                                <h3>Strengths</h3>
+                                <ul>
+                                    <li>Real-time performance on commodity GPUs and edge devices</li>
+                                    <li>End-to-end trainable single-stage designs</li>
+                                    <li>Strong, active ecosystem (repos, pretrained weights, tutorials)</li>
+                                    <li>Flexible: detection, segmentation, classification, and pose support</li>
+                                </ul>
+                            </div>
+                            <div class="weaknesses">
+                                <h3>Weaknesses</h3>
+                                <ul>
+                                    <li>Small/occluded/crowded objects remain challenging</li>
+                                    <li>Pre–YOLOv10 variants rely on NMS; threshold tuning impacts recall/latency</li>
+                                    <li>Class imbalance and long-tail distributions require careful loss/assigner tuning</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="rt-detr-family" class="blog-section">
+                    <h2>RT-DETR Family</h2>
+                    <div class="family-section">
+                        <p>RT-DETR combines efficient CNN backbones with transformer encoders/decoders to achieve real-time, end-to-end detection without NMS.</p>
+
+                        <h3>Core Concept</h3>
+                        <ul>
+                            <li>CNN backbone for efficient feature extraction</li>
+                            <li>Transformer encoder/decoder with learnable object queries for global reasoning</li>
+                            <li>Set-based prediction with bipartite (Hungarian) matching and no NMS at inference</li>
+                        </ul>
+
+                        <h3>Architecture Components</h3>
+                        <ol>
+                            <li><strong>Backbone:</strong> ResNet-like or other efficient CNN for multi-scale features</li>
+                            <li><strong>Encoder:</strong> Multi-scale transformer encoder to aggregate global context</li>
+                            <li><strong>Decoder:</strong> Transformer decoder with learnable queries producing object slots</li>
+                            <li><strong>Prediction Heads:</strong> Boxes (e.g., L1/GIoU) and classes (CE/Focal), trained end-to-end</li>
+                        </ol>
+
+                        <h3>Training and Inference Notes</h3>
+                        <ul>
+                            <li><strong>Matching:</strong> Hungarian matching aligns predictions with ground truth (set prediction)</li>
+                            <li><strong>Auxiliary losses:</strong> On intermediate decoder layers help convergence</li>
+                            <li><strong>NMS-free:</strong> By design; some repos expose optional NMS for convenience/compatibility</li>
+                        </ul>
+
+                        <h3>Variants</h3>
+                        <div class="evolution-timeline">
+                            <h4>RT-DETR (Original, 2023)</h4>
+                            <ul>
+                                <li><strong>Innovation:</strong> Real-time DETR with hybrid CNN–Transformer design</li>
+                                <li><strong>Paper:</strong> DETRs Beat YOLOs on Real-time Object Detection</li>
+                            </ul>
+
+                            <h4>RT-DETR v2</h4>
+                            <ul>
+                                <li><strong>Description:</strong> Enhanced training strategies and architectural tweaks</li>
+                                <li><strong>Focus:</strong> Better accuracy/throughput balance</li>
+                            </ul>
+
+                            <h4>RT-DETR (Ultralytics)</h4>
+                            <ul>
+                                <li><strong>Implementation:</strong> Integrated into the Ultralytics framework</li>
+                                <li><strong>Benefits:</strong> Simplified API and ecosystem integration</li>
+                            </ul>
+                        </div>
+
+                        <div class="strengths-weaknesses">
+                            <div class="strengths">
+                                <h3>Strengths</h3>
+                                <ul>
+                                    <li>Captures long-range dependencies with global attention</li>
+                                    <li>End-to-end training and inference (NMS-free)</li>
+                                    <li>Scales well across model sizes for different speed/accuracy targets</li>
+                                </ul>
+                            </div>
+                            <div class="weaknesses">
+                                <h3>Weaknesses</h3>
+                                <ul>
+                                    <li>Typically higher memory/compute than YOLO on the same hardware budget</li>
+                                    <li>Training dynamics (matching, auxiliary losses) can be more complex to tune</li>
+                                    <li>Ecosystem and tooling are newer than classic YOLO pipelines</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="yolo-nas" class="blog-section">
+                    <h2>YOLO-NAS</h2>
+                    <div class="family-section">
+                        <p>YOLO-NAS leverages Neural Architecture Search (NAS) to discover architectures optimized for accuracy–latency trade-offs and deployment constraints.</p>
+
+                        <h3>Core Innovation</h3>
+                        <ul>
+                            <li>Automated architecture search to balance accuracy, latency, and memory</li>
+                            <li>Quantization-aware design for efficient edge deployment</li>
+                            <li>Training strategies often include knowledge distillation</li>
+                        </ul>
+
+                        <h3>Key Features</h3>
+                        <ol>
+                            <li>NAS-optimized backbones/necks/heads for target hardware</li>
+                            <li>QAT-ready (Quantization-Aware Training) and export-friendly</li>
+                            <li>Built on Deci's SuperGradients training library and deployment stack</li>
+                            <li>Production-focused recipes and tools</li>
+                        </ol>
+
+                        <div class="strengths-weaknesses">
+                            <div class="strengths">
+                                <h3>Strengths</h3>
+                                <ul>
+                                    <li>Strong real-world deployment focus with competitive accuracy–latency trade-offs</li>
+                                    <li>Built-in quantization/compression support</li>
+                                    <li>Modern training techniques (distillation, QAT) out of the box</li>
+                                </ul>
+                            </div>
+                            <div class="weaknesses">
+                                <h3>Weaknesses</h3>
+                                <ul>
+                                    <li>NAS/search itself is resource-intensive (done by provider; not replicated by users)</li>
+                                    <li>Architectures can feel "black box" compared to hand-designed networks</li>
+                                    <li>Some features are tightly integrated with a specific tooling ecosystem</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="specialized-architectures" class="blog-section">
+                    <h2>Specialized Architectures (Project-Specific)</h2>
+                    
+                    <div class="family-section">
+                        <h3>D-FINE</h3>
+                        <p>Fine-grained object detection focused on precise localization and subtle detail differences.</p>
+                        
+                        <h4>Key Features</h4>
+                        <ul>
+                            <li>Fine-grained detection of small details</li>
+                            <li>High-precision localization</li>
+                            <li>Advanced multi-scale feature fusion</li>
+                        </ul>
+
+                        <h4>Typical Use Cases</h4>
+                        <ul>
+                            <li>Medical imaging analysis</li>
+                            <li>Manufacturing quality control</li>
+                            <li>Scientific image analysis</li>
+                            <li>Detail-focused surveillance</li>
+                        </ul>
+                    </div>
+
+                    <div class="family-section">
+                        <h3>DEIM</h3>
+                        <p>Detection with Enhanced Instance Modeling for improved instance-level reasoning.</p>
+                        
+                        <h4>Key Features</h4>
+                        <ul>
+                            <li>Enhanced instance representations</li>
+                            <li>Context-aware modeling of object relations</li>
+                            <li>Robust detection under cluttered or complex scenes</li>
+                        </ul>
+
+                        <h4>Typical Applications</h4>
+                        <ul>
+                            <li>Crowded scenes</li>
+                            <li>Instance segmentation workflows</li>
+                            <li>Complex scene understanding</li>
+                            <li>Multi-object tracking</li>
+                        </ul>
+                    </div>
+
+                    <div class="family-section">
+                        <h3>RF-DETR</h3>
+                        <p>Refined Detection Transformer emphasizing better convergence and feature quality.</p>
+                        
+                        <h4>Key Improvements</h4>
+                        <ul>
+                            <li>Optimized transformer components and training schedule</li>
+                            <li>Improved feature representations and decoding strategy</li>
+                            <li>Accuracy-focused while maintaining reasonable efficiency</li>
+                        </ul>
+
+                        <h4>Strengths</h4>
+                        <ul>
+                            <li>High accuracy and more stable training</li>
+                            <li>Strong feature quality and interpretability</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="architecture-comparison" class="blog-section">
+                    <h2>Architecture Comparison Summary</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="architecture-table">
+                            <thead>
+                                <tr>
+                                    <th>Family</th>
+                                    <th>Paradigm</th>
+                                    <th>Anchors</th>
+                                    <th>NMS at Inference</th>
+                                    <th>Scales</th>
+                                    <th>Typical Deployment</th>
+                                    <th>Relative Compute</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>YOLO (v4–v7)</td>
+                                    <td>Single-stage CNN</td>
+                                    <td>Yes</td>
+                                    <td>Yes</td>
+                                    <td>T/S/M/L/XL</td>
+                                    <td>T: mobile/edge<br>S: edge GPU<br>M: desktop GPU<br>L: server GPU</td>
+                                    <td>T: very low<br>S: low<br>M: medium<br>L: high</td>
+                                </tr>
+                                <tr>
+                                    <td>YOLO (v8–YOLO11)</td>
+                                    <td>Single-stage CNN</td>
+                                    <td>No (anchor-free)</td>
+                                    <td>Yes (except YOLOv10)</td>
+                                    <td>T/S/M/L/XL</td>
+                                    <td>T: mobile/edge<br>S: edge GPU<br>M: desktop GPU<br>L: server GPU</td>
+                                    <td>T: very low<br>S: low<br>M: medium<br>L: high</td>
+                                </tr>
+                                <tr>
+                                    <td>YOLOv10</td>
+                                    <td>Single-stage CNN</td>
+                                    <td>No</td>
+                                    <td>No (end-to-end)</td>
+                                    <td>T/S/M/L/XL</td>
+                                    <td>T: mobile/edge<br>S: edge GPU<br>M: desktop GPU<br>L: server GPU</td>
+                                    <td>T: very low<br>S: low<br>M: medium<br>L: high</td>
+                                </tr>
+                                <tr>
+                                    <td>RT-DETR</td>
+                                    <td>CNN + Transformer</td>
+                                    <td>N/A</td>
+                                    <td>No (by design)</td>
+                                    <td>S/M/L/XL</td>
+                                    <td>S: edge GPU<br>M: desktop/server GPU<br>L: server GPU</td>
+                                    <td>S: medium<br>M: medium–high<br>L: high</td>
+                                </tr>
+                                <tr>
+                                    <td>YOLO-NAS</td>
+                                    <td>NAS-optimized CNN</td>
+                                    <td>Varies</td>
+                                    <td>Typically Yes</td>
+                                    <td>S/M/L</td>
+                                    <td>S: edge devices<br>M: desktop GPU<br>L: server GPU</td>
+                                    <td>S: low<br>M: medium<br>L: high</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p><em>Scale key: T = Tiny, S = Small, M = Medium, L = Large, XL = Extra Large</em></p>
+                </section>
+
+                <section id="deployment-notes" class="blog-section">
+                    <h2>Deployment Notes</h2>
+                    <div class="deployment-notes">
+                        <h3>Export/Inference</h3>
+                        <ul>
+                            <li><strong>YOLO families and YOLO-NAS:</strong> Strong support for ONNX, TensorRT, and various runtimes (OpenVINO, CoreML) depending on repo/tools</li>
+                            <li><strong>RT-DETR:</strong> Exportability improving; NMS-free simplifies deployment graphs, but attention blocks may need optimized kernels</li>
+                        </ul>
+
+                        <h3>Quantization</h3>
+                        <ul>
+                            <li><strong>YOLO-NAS:</strong> QAT-ready by design; good fit for INT8 on edge</li>
+                            <li><strong>YOLO (v8/YOLO11):</strong> Widely used with post-training quantization or QAT via vendor toolchains</li>
+                        </ul>
+
+                        <h3>NMS-free Benefits</h3>
+                        <ul>
+                            <li>Eliminates post-processing latency and threshold sensitivity (YOLOv10, RT-DETR)</li>
+                            <li>Can simplify end-to-end pipelines and make latency more predictable</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="blog-section">
+                    <h2>Conclusion</h2>
+                    <p>The landscape of object detection architectures continues to evolve rapidly, with each family offering distinct advantages for different use cases. YOLO remains the go-to choice for real-time applications with its proven track record and extensive ecosystem. RT-DETR represents the cutting edge of transformer-based detection, offering NMS-free inference and global reasoning capabilities. YOLO-NAS brings automated architecture optimization to the table, while specialized architectures like D-FINE, DEIM, and RF-DETR address specific domain requirements.</p>
+                    
+                    <p>When choosing an architecture, consider your deployment constraints, accuracy requirements, and development timeline. The "at-a-glance selection" guide at the beginning of this post provides a quick reference, but thorough evaluation on your specific dataset and hardware remains essential for optimal results.</p>
+                </section>
+
+                <section id="references" class="blog-section">
+                    <h2>References</h2>
+                    <div class="references-list">
+                        <ul>
+                            <li>YOLOv1 (2016): <a href="https://arxiv.org/abs/1506.02640" target="_blank">https://arxiv.org/abs/1506.02640</a></li>
+                            <li>YOLOv2/YOLO9000 (2017): <a href="https://arxiv.org/abs/1612.08242" target="_blank">https://arxiv.org/abs/1612.08242</a></li>
+                            <li>YOLOv3 (2018): <a href="https://arxiv.org/abs/1804.02767" target="_blank">https://arxiv.org/abs/1804.02767</a></li>
+                            <li>YOLOv4 (2020): <a href="https://arxiv.org/abs/2004.10934" target="_blank">https://arxiv.org/abs/2004.10934</a></li>
+                            <li>YOLOv5 (2020, repo): <a href="https://github.com/ultralytics/yolov5" target="_blank">https://github.com/ultralytics/yolov5</a></li>
+                            <li>YOLOX (SimOTA, 2021): <a href="https://arxiv.org/abs/2107.08430" target="_blank">https://arxiv.org/abs/2107.08430</a></li>
+                            <li>YOLOv6 (2022): <a href="https://arxiv.org/abs/2209.02976" target="_blank">https://arxiv.org/abs/2209.02976</a></li>
+                            <li>YOLOv7 (2022): <a href="https://arxiv.org/abs/2207.02696" target="_blank">https://arxiv.org/abs/2207.02696</a></li>
+                            <li>YOLOv8 (2023, repo): <a href="https://github.com/ultralytics/ultralytics" target="_blank">https://github.com/ultralytics/ultralytics</a></li>
+                            <li>YOLOv9 (2024): <a href="https://arxiv.org/abs/2402.13616" target="_blank">https://arxiv.org/abs/2402.13616</a></li>
+                            <li>YOLOv10 (2024): <a href="https://arxiv.org/abs/2405.14458" target="_blank">https://arxiv.org/abs/2405.14458</a></li>
+                            <li>Ultralytics YOLO11 (2024, docs): <a href="https://docs.ultralytics.com/models/yolo11/" target="_blank">https://docs.ultralytics.com/models/yolo11/</a></li>
+                            <li>RT-DETR (2023): <a href="https://arxiv.org/abs/2304.08069" target="_blank">https://arxiv.org/abs/2304.08069</a></li>
+                            <li>RT-DETR (Ultralytics, docs): <a href="https://docs.ultralytics.com/models/rtdetr/" target="_blank">https://docs.ultralytics.com/models/rtdetr/</a></li>
+                            <li>YOLO-NAS (repo): <a href="https://github.com/Deci-AI/super-gradients" target="_blank">https://github.com/Deci-AI/super-gradients</a></li>
+                        </ul>
+                    </div>
+                </section>
+
+            </article>
+
+        </div>
+    </div>
+
+</body>
+</html>
