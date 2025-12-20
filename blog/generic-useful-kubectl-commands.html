@@ -1,0 +1,372 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Generic Useful kubectl Commands - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        pre {
+            background: #1e1e1e;
+            border-radius: 4px;
+            padding: 12px 16px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+        h2, h3 {
+            margin-top: 1.8em;
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+        <a href="index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content blog-content">
+            <h1>Generic Useful <code>kubectl</code> Commands (with <code>--kubeconfig</code> &amp; port-forwarding)</h1>
+            <p class="post-meta">Posted on November 19, 2025</p>
+            
+            <h2>Introduction</h2>
+            <p>
+                If you work with Kubernetes daily, you know that <code>kubectl</code> is your best friend—and sometimes your worst enemy. 
+                Whether you're debugging a failing pod at 2 AM or just trying to check if your deployment rolled out successfully, 
+                having a solid arsenal of <code>kubectl</code> commands at your fingertips can save you hours of frustration.
+            </p>
+            <p>
+                This guide is a collection of the commands I find myself using constantly. It's not meant to be exhaustive 
+                (the official kubectl docs are great for that), but rather a practical reference for the everyday tasks: 
+                inspecting deployments, tailing logs, debugging pods, managing ConfigMaps and Secrets, and—one of my favorites—port-forwarding 
+                to access services locally without exposing them to the internet.
+            </p>
+            <p>
+                One thing you'll notice: all commands include the <code>--kubeconfig</code> flag. In production environments, 
+                you often work with multiple clusters, and explicitly specifying the kubeconfig file prevents those "oops, wrong cluster" 
+                moments we've all experienced. Of course, you can export <code>KUBECONFIG</code> as an environment variable to avoid 
+                repetition—I'll show you how later.
+            </p>
+
+            <hr>
+
+            <h2>Working with Deployments</h2>
+            <p>
+                Deployments are the bread and butter of Kubernetes workloads. When something goes wrong, these commands help you 
+                quickly understand what's happening and take action.
+            </p>
+
+            <h3>Get basic info</h3>
+            <p>Start simple—get a quick overview of your deployment's status, replicas, and age:</p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get deployment &lt;name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>Describe a deployment (full debug info)</h3>
+            <p>
+                When things aren't working as expected, <code>describe</code> is your go-to command. 
+                It shows everything: events, conditions, replica sets, and any recent errors.
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml describe deployment &lt;name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>Get deployment YAML</h3>
+            <p>Need to see the full configuration? This dumps the deployment spec in YAML format, useful for debugging or creating templates:</p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get deployment &lt;name&gt; -n &lt;namespace&gt; -o yaml</code></pre>
+
+            <h3>Show rollout status</h3>
+            <p>After applying changes, track the rollout in real-time to see if your new version is deploying successfully:</p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml rollout status deployment/&lt;name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>Undo last rollout</h3>
+            <p>
+                Deployed a breaking change? No problem. This command rolls back to the previous revision—a lifesaver when things go south:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml rollout undo deployment/&lt;name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <hr>
+
+            <h2>Inspecting Pods</h2>
+            <p>
+                Pods are where your containers actually run. Most debugging sessions start here, especially when containers are crashing 
+                or stuck in <code>Pending</code> or <code>CrashLoopBackOff</code> states.
+            </p>
+
+            <h3>List pods in a namespace</h3>
+            <p>The simplest command to see all pods in a namespace, including their status and restart counts:</p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get pods -n &lt;namespace&gt;</code></pre>
+
+            <h3>List pods created by a deployment (label selector)</h3>
+            <p>
+                Deployments create pods with specific labels. Use label selectors to filter and see only the pods managed by a particular app:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get pods -n &lt;namespace&gt; -l app=&lt;appname&gt;</code></pre>
+
+            <h3>Describe a pod</h3>
+            <p>
+                This is where the magic happens. <code>describe pod</code> shows you container states, recent events, volume mounts, 
+                and most importantly—why a pod is failing. Look at the "Events" section at the bottom for clues.
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml describe pod &lt;pod-name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>Get full pod YAML (spec + volumes)</h3>
+            <p>Need to see the complete pod specification including environment variables, volumes, and resource limits?</p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get pod &lt;pod-name&gt; -n &lt;namespace&gt; -o yaml</code></pre>
+
+            <hr>
+
+            <h2>Tailing and Analyzing Logs</h2>
+            <p>
+                Logs are your window into what's actually happening inside containers. Whether you're debugging application errors 
+                or tracking down performance issues, these commands are essential.
+            </p>
+
+            <h3>Simple logs from a pod</h3>
+            <p>Basic log retrieval—shows you what the container has been outputting recently:</p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml logs &lt;pod&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>Logs of pods selected by label (aggregates logs from all matching pods)</h3>
+            <p>
+                When you have multiple replicas, this aggregates logs from all pods matching the label. 
+                Super handy for seeing patterns across your deployment:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml logs -n &lt;namespace&gt; -l app=&lt;appname&gt;</code></pre>
+
+            <h3>Follow logs</h3>
+            <p>The <code>-f</code> flag works just like <code>tail -f</code>—it streams logs in real-time. Essential for watching live activity:</p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml logs -f &lt;pod&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>Logs for a specific container in a pod</h3>
+            <p>
+                Pods can have multiple containers (sidecars, init containers, etc.). Use <code>-c</code> to specify which container's logs you want:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml logs &lt;pod&gt; -c &lt;container&gt; -n &lt;namespace&gt;</code></pre>
+
+            <hr>
+
+            <h2>ConfigMaps &amp; Secrets</h2>
+            <p>
+                ConfigMaps and Secrets are how you inject configuration and sensitive data into your pods. 
+                Managing them properly is crucial—especially Secrets, which require extra care.
+            </p>
+
+            <h3>List ConfigMaps</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get configmap -n &lt;namespace&gt;</code></pre>
+
+            <h3>View ConfigMap YAML</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get configmap &lt;name&gt; -n &lt;namespace&gt; -o yaml</code></pre>
+
+            <h3>Describe ConfigMap</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml describe configmap &lt;name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>Describe Secret (metadata)</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml describe secret &lt;name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <h3>View Secret (base64 decode) — caution: secrets are sensitive</h3>
+            <p>
+                Secrets are base64-encoded (not encrypted!) in Kubernetes. This command decodes them for viewing. 
+                <strong>Be careful</strong>—never run this in production logs or share the output publicly. 
+                The <code>jq</code> command formats the output nicely:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get secret &lt;name&gt; -n &lt;namespace&gt; -o jsonpath="{.data}" \
+  | jq -r 'to_entries[] | "\(.key)=\(.value | @base64d)"'</code></pre>
+
+            <hr>
+
+            <h2>Services &amp; Networking</h2>
+            <p>
+                Services expose your pods to the network. When connectivity issues arise, these commands help you understand 
+                how traffic is being routed.
+            </p>
+
+            <h3>List services</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get svc -n &lt;namespace&gt;</code></pre>
+
+            <h3>Describe a service</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml describe svc &lt;name&gt; -n &lt;namespace&gt;</code></pre>
+
+            <hr>
+
+            <h2>Cluster Events</h2>
+            <p>
+                Events are Kubernetes' way of telling you what's happening under the hood. They're time-limited (usually kept for about an hour), 
+                so checking them early in your debugging process is important.
+            </p>
+
+            <h3>List all events</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get events -n &lt;namespace&gt;</code></pre>
+
+            <h3>Filter events for a specific object</h3>
+            <p>
+                When you're debugging a specific pod or deployment, filter events to see only what's relevant. 
+                This cuts through the noise in busy clusters:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get events -n &lt;namespace&gt; \
+  --field-selector involvedObject.name=&lt;name&gt;</code></pre>
+
+            <hr>
+
+            <h2>Interactive Debugging &amp; Access</h2>
+            <p>
+                Sometimes you need to get "inside" a container to poke around, or access a service that isn't exposed externally. 
+                These commands are your friends for hands-on debugging.
+            </p>
+
+            <h3>Exec into a pod (shell)</h3>
+            <p>
+                Open an interactive shell inside a running container. Perfect for checking files, testing network connectivity, 
+                or running diagnostic commands. Note that some minimal containers might only have <code>/bin/sh</code> instead of bash:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml exec -it &lt;pod&gt; -n &lt;namespace&gt; -- /bin/bash
+# or use /bin/sh if bash is not present</code></pre>
+
+            <h3>Port-forward to a pod (localPort:remotePort)</h3>
+            <p>
+                This is one of my most-used commands. It creates a secure tunnel from your local machine to a pod, 
+                letting you access services as if they were running on localhost. No need to expose ports publicly!
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml port-forward pod/&lt;pod-name&gt; 8080:80 -n &lt;namespace&gt;</code></pre>
+
+            <hr>
+
+            <h2>Namespace Management</h2>
+            <p>
+                Namespaces are how Kubernetes organizes resources. In multi-tenant clusters or environments with many teams, 
+                they're essential for isolation.
+            </p>
+
+            <h3>List namespaces</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get ns</code></pre>
+
+            <hr>
+
+            <h2>Applying &amp; Managing Resources</h2>
+            <p>
+                Beyond inspecting, you need to create, update, and delete resources. These commands handle the lifecycle of your Kubernetes objects.
+            </p>
+
+            <h3>Apply manifests in a folder</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml apply -f ./deploy/</code></pre>
+
+            <h3>Delete a resource file</h3>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml delete -f &lt;file.yaml&gt;</code></pre>
+
+            <h3>Dry-run apply (client-side diff)</h3>
+            <p>
+                Before making changes to a live cluster, always dry-run! This shows you what <em>would</em> happen without actually applying it. 
+                It's saved me from many mistakes:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml apply -f &lt;file.yaml&gt; --dry-run=client -o yaml</code></pre>
+
+            <hr>
+
+            <h2>Pro Tips: Simplifying Your Workflow</h2>
+            <p>
+                Typing <code>--kubeconfig=/path/to/kubeconfig.yaml</code> on every command gets old fast. 
+                Here are some tricks to streamline your workflow.
+            </p>
+
+            <h3>Export <code>KUBECONFIG</code> to avoid repeating the flag</h3>
+            <p>
+                Set <code>KUBECONFIG</code> as an environment variable in your shell session. Now all kubectl commands will use this config automatically:
+            </p>
+            <pre><code>export KUBECONFIG=/path/to/kubeconfig.yaml
+# then omit --kubeconfig in following commands:
+kubectl get pods -n &lt;namespace&gt;</code></pre>
+
+            <h3>Use a different kubeconfig for a single command</h3>
+            <p>
+                Need to quickly switch contexts for one command? Prefix it with the environment variable—no permanent changes needed:
+            </p>
+            <pre><code>KUBECONFIG=/path/to/kubeconfig.yaml kubectl get pods -n &lt;namespace&gt;</code></pre>
+
+            <hr>
+
+            <h2>Port-Forwarding Deep Dive</h2>
+            <p>
+                Port-forwarding deserves special attention because it's such a versatile tool. Whether you're testing a database connection, 
+                debugging a web service, or accessing an admin panel, port-forwarding lets you work as if everything were local. 
+                Here's a comprehensive look at different scenarios.
+            </p>
+
+            <h3>1) Pod → local port (single port)</h3>
+            <p>
+                The most basic form: forward a single port from a pod to your local machine. 
+                After running this, you can access the service at <code>http://localhost:8080</code>:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml port-forward pod/&lt;pod-name&gt; 8080:80 -n &lt;namespace&gt;
+# access locally at http://localhost:8080</code></pre>
+
+            <h3>2) Service → local port</h3>
+            <p>
+                Instead of targeting a specific pod, forward to a service. Kubernetes will automatically route to one of the backing pods—great 
+                when you don't care which pod handles the request:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml port-forward svc/&lt;service-name&gt; 8080:80 -n &lt;namespace&gt;</code></pre>
+
+            <h3>3) Multiple ports at once</h3>
+            <p>
+                Need to forward HTTP and HTTPS? Or a web server and a metrics endpoint? Just list them all:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml port-forward pod/&lt;pod-name&gt; 8080:80 8443:443 -n &lt;namespace&gt;</code></pre>
+
+            <h3>4) Port-forward from a Deployment</h3>
+            <p>
+                Deployments don't have a direct port-forward option, but you can grab the first pod from the deployment and forward to it. 
+                This one-liner does the trick:
+            </p>
+            <pre><code>POD=$(kubectl --kubeconfig=/path/to/kubeconfig.yaml get pod -n &lt;namespace&gt; -l app=&lt;appname&gt; -o jsonpath="{.items[0].metadata.name}")
+kubectl --kubeconfig=/path/to/kubeconfig.yaml port-forward pod/$POD 8080:80 -n &lt;namespace&gt;</code></pre>
+
+            <h3>5) Background port-forwarding</h3>
+            <p>
+                Sometimes you want port-forwarding to run in the background while you do other work. 
+                This approach redirects output to a log file and saves the process ID so you can kill it later. 
+                <strong>Note:</strong> For production use, consider a more robust solution like a systemd service or supervisor process:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml port-forward pod/&lt;pod-name&gt; 8080:80 -n &lt;namespace&gt; &gt; /tmp/portforward.log 2&gt;&1 &
+echo $! &gt; /tmp/portforward.pid
+# to stop:
+kill $(cat /tmp/portforward.pid)</code></pre>
+
+            <h3>6) Dealing with port conflicts</h3>
+            <p>
+                Already have something running on port 8080? No problem—just pick a different local port. 
+                The remote port (the one in the container) stays the same:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml port-forward pod/&lt;pod-name&gt; 18080:80 -n &lt;namespace&gt;</code></pre>
+
+            <h3>7) Debugging service-to-pod mapping</h3>
+            <p>
+                Ever wonder which pods are actually backing a service? Check the endpoints—they show you the exact pod IPs and ports 
+                that the service routes to:
+            </p>
+            <pre><code>kubectl --kubeconfig=/path/to/kubeconfig.yaml get endpoints &lt;service-name&gt; -n &lt;namespace&gt; -o yaml</code></pre>
+
+            <hr>
+
+            <h2>Wrapping Up</h2>
+            <p>
+                These commands form the backbone of my daily Kubernetes workflow. I've probably run <code>kubectl logs -f</code> 
+                and <code>kubectl port-forward</code> thousands of times at this point—they're that useful.
+            </p>
+            <p>
+                The key to mastering kubectl is muscle memory. Keep this reference handy, but more importantly, use these commands regularly. 
+                Over time, you'll develop intuition for which command to reach for in different situations.
+            </p>
+            <p>
+                Remember: Kubernetes can be complex, but having the right tools at your fingertips makes all the difference. 
+                Whether you're troubleshooting production issues or exploring a new cluster, these commands will serve you well.
+            </p>
+            <p>
+                Happy debugging! 🚀
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>
