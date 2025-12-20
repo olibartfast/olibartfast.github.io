@@ -1,0 +1,442 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>The Ultimate Guide to Modern C++ Projects - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- Link back to the main CSS file -->
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;  /* Larger base font size for article content */
+            line-height: 1.6;   /* Increased line height for better readability */
+        }
+
+        .code-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1.1rem;  /* Increased font size for code blocks */
+        }
+
+        .code-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        /* Make inline code consistent with code blocks */
+        code {
+            font-size: 1.1rem;
+        }
+
+        .command-example {
+            background: #1e1e1e;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 10px 15px;
+            margin: 10px 0;
+            color: #00ff00;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .tips-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .table-of-contents li {
+            margin: 8px 0;
+        }
+
+        .table-of-contents a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .table-of-contents a:hover {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <!-- This outer wrapper helps center the content area -->
+    <div class="blog-view-wrapper">
+
+        <!-- Back button positioned relative to the wrapper -->
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <!-- This inner container will hold the scrollable content -->
+        <div class="blog-scrollable-content">
+
+            <h1>The Ultimate Guide to Modern C++ Projects</h1>
+            <p class="post-meta">Modularity, Testing, and CI/CD for Production-Ready Codebases</p>
+            <p class="post-meta">Posted on December 20, 2025</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>In the era of Modern C++ (C++17/20/23), the language has evolved into a powerful tool for safe and expressive high-performance computing. However, the ecosystem around it—build systems, testing, and continuous integration—is just as critical as the code itself.</p>
+                
+                <p>This guide walks you through setting up a production-ready C++ project using modern CMake, proper dependency injection, compiler hardening, and a robust CI/CD pipeline.</p>
+
+                <div class="table-of-contents">
+                    <h3>📑 Table of Contents</h3>
+                    <ul>
+                        <li><a href="#project-structure">1. Project Structure and Modularity</a></li>
+                        <li><a href="#testability">2. Testability and Dependency Injection</a></li>
+                        <li><a href="#e2e-testing">3. End-to-End Testing with CTest</a></li>
+                        <li><a href="#compiler-hardening">4. Compiler Hardening and Sanitizers</a></li>
+                        <li><a href="#dependency-management">5. Reproducibility and Dependency Management</a></li>
+                        <li><a href="#ci-cd">6. CI/CD Pipeline (GitHub Actions)</a></li>
+                        <li><a href="#summary">Summary</a></li>
+                    </ul>
+                </div>
+
+                <section id="project-structure" class="blog-section">
+                    <h2>1. Project Structure and Modularity</h2>
+                    <p>The days of a single <code>main.cpp</code> or a flat folder structure are over. A modern project should be modular, separating public interfaces from private implementations.</p>
+
+                    <h3>The Recommended Layout</h3>
+                    <p>Adopt a standard layout that tools and other developers expect:</p>
+
+                    <pre class="code-snippet"><code>my-project/
+├── CMakeLists.txt            # Root build definition
+├── CMakePresets.json         # Build configurations
+├── vcpkg.json                # Dependency manifest
+├── src/
+│   ├── app/                  # Executable code
+│   └── core/                 # Business logic (library)
+├── include/
+│   └── myproject/            # Public headers
+├── tests/
+│   ├── unit/
+│   └── e2e/
+└── external/                 # For vendored dependencies</code></pre>
+
+                    <h3>Modern CMake: Targets over Variables</h3>
+                    <p>Forget <code>include_directories</code> and <code>link_libraries</code>. Modern CMake is all about <strong>Targets</strong> and <strong>Properties</strong>.</p>
+                    
+                    <ul>
+                        <li><strong>Rule:</strong> Always use <code>target_include_directories</code>, <code>target_compile_features</code>, and <code>target_link_libraries</code>.</li>
+                        <li><strong>Visibility:</strong> Use <code>PUBLIC</code>, <code>PRIVATE</code>, and <code>INTERFACE</code> to control dependency propagation.</li>
+                    </ul>
+
+                    <p><strong>src/core/CMakeLists.txt:</strong></p>
+                    <pre class="code-snippet"><code>add_library(core_lib STATIC implementation.cpp)
+
+# Consumers automatically get the include path
+target_include_directories(core_lib PUBLIC
+    $&lt;BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include&gt;
+    $&lt;INSTALL_INTERFACE:include&gt;
+)
+
+# Enforce C++20 for this library and its consumers
+target_compile_features(core_lib PUBLIC cxx_std_20)</code></pre>
+
+                    <h3>CMake Presets for Reproducible Builds</h3>
+                    <p>CMakePresets.json (introduced in CMake 3.19) standardizes build configurations across your team and CI. Instead of remembering complex command-line flags, developers simply run <code>cmake --preset=release</code>.</p>
+
+                    <p><strong>CMakePresets.json:</strong></p>
+                    <pre class="code-snippet"><code>{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug", "configurePreset": "debug" },
+    { "name": "release", "configurePreset": "release" }
+  ]
+}</code></pre>
+                </section>
+
+                <section id="testability" class="blog-section">
+                    <h2>2. Testability and Dependency Injection</h2>
+                    <p>Writing testable C++ means writing code that is <strong>loosely coupled</strong>. The biggest enemies of unit testing are singletons and direct instantiation of heavy dependencies (databases, network sockets, file systems) inside your business logic.</p>
+
+                    <h3>The Approach: Constructor Injection</h3>
+                    <p>Instead of instantiating a dependency inside your class, accept an interface (abstract base class) in the constructor.</p>
+
+                    <p><strong>The Interface (The Contract):</strong></p>
+                    <pre class="code-snippet"><code>// IDataStore.hpp
+class IDataStore {
+public:
+    virtual ~IDataStore() = default;
+    virtual std::string GetData(int id) = 0;
+};</code></pre>
+
+                    <p><strong>The Consumer (Your Business Logic):</strong></p>
+                    <pre class="code-snippet"><code>// UserManager.hpp
+class UserManager {
+    IDataStore& db_;  // Reference to interface
+
+public:
+    // Dependency Injection via Constructor
+    explicit UserManager(IDataStore& db) : db_(db) {}
+
+    std::string GetUserName(int id) {
+        return "User: " + db_.GetData(id);
+    }
+};</code></pre>
+
+                    <h3>Unit Testing with Google Mock</h3>
+                    <p>Now you can inject a mock object during testing without needing a real database:</p>
+
+                    <pre class="code-snippet"><code>// tests/unit/TestUserManager.cpp
+#include &lt;gtest/gtest.h&gt;
+#include &lt;gmock/gmock.h&gt;
+#include "UserManager.hpp"
+
+class MockDB : public IDataStore {
+public:
+    MOCK_METHOD(std::string, GetData, (int id), (override));
+};
+
+TEST(UserManagerTest, FormatsNameCorrectly) {
+    MockDB mock_db;
+
+    // Expectation: When GetData(42) is called, return "Alice"
+    EXPECT_CALL(mock_db, GetData(42)).WillOnce(testing::Return("Alice"));
+
+    UserManager mgr(mock_db);
+    EXPECT_EQ(mgr.GetUserName(42), "User: Alice");
+}</code></pre>
+                </section>
+
+                <section id="e2e-testing" class="blog-section">
+                    <h2>3. End-to-End Testing with CTest</h2>
+                    <p>Unit tests verify logic in isolation, but E2E tests verify the application works as a whole. CMake's CTest tool is excellent for orchestrating both.</p>
+
+                    <p>For a C++ CLI application, an E2E test typically looks like: run the binary with arguments X, expect output Y.</p>
+
+                    <p><strong>tests/e2e/CMakeLists.txt:</strong></p>
+                    <pre class="code-snippet"><code>add_test(
+    NAME E2E_Login_Flow
+    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_login.py
+            $&lt;TARGET_FILE:my_app_executable&gt;
+)</code></pre>
+
+                    <p><strong>tests/e2e/test_login.py:</strong></p>
+                    <pre class="code-snippet"><code>import subprocess
+import sys
+
+executable_path = sys.argv[1]
+result = subprocess.run(
+    [executable_path, "--login", "user"],
+    capture_output=True,
+    text=True
+)
+
+if "Welcome, user" in result.stdout:
+    sys.exit(0)  # Success
+else:
+    print(f"Failed! Output was: {result.stdout}")
+    sys.exit(1)  # Failure</code></pre>
+
+                    <div class="tips-box">
+                        <p><strong>💡 Tip:</strong> For more complex E2E scenarios, consider using <code>pytest</code> with fixtures for setup/teardown and better assertion messages.</p>
+                    </div>
+
+                    <p>Running <code>ctest</code> in your build folder will execute both your GTest unit tests and your Python E2E scripts.</p>
+                </section>
+
+                <section id="compiler-hardening" class="blog-section">
+                    <h2>4. Compiler Hardening and Sanitizers</h2>
+                    <p>A production-ready project should catch bugs at compile time whenever possible and use runtime sanitizers in Debug builds.</p>
+
+                    <h3>Warning Flags</h3>
+                    <p>Create a reusable interface target for compiler warnings:</p>
+
+                    <p><strong>cmake/CompilerWarnings.cmake:</strong></p>
+                    <pre class="code-snippet"><code>add_library(project_warnings INTERFACE)
+
+if(MSVC)
+    target_compile_options(project_warnings INTERFACE /W4 /WX /permissive-)
+else()
+    target_compile_options(project_warnings INTERFACE
+        -Wall -Wextra -Wpedantic -Werror
+        -Wshadow -Wnon-virtual-dtor -Wold-style-cast
+        -Wcast-align -Wunused -Woverloaded-virtual
+        -Wconversion -Wsign-conversion -Wnull-dereference
+    )
+endif()
+
+# Usage: target_link_libraries(my_target PRIVATE project_warnings)</code></pre>
+
+                    <h3>Address and Undefined Behavior Sanitizers</h3>
+                    <p>Enable sanitizers in Debug builds to catch memory errors and undefined behavior:</p>
+
+                    <p><strong>cmake/Sanitizers.cmake:</strong></p>
+                    <pre class="code-snippet"><code>option(ENABLE_SANITIZERS "Enable ASan and UBSan" OFF)
+
+if(ENABLE_SANITIZERS AND NOT MSVC)
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()</code></pre>
+                </section>
+
+                <section id="dependency-management" class="blog-section">
+                    <h2>5. Reproducibility and Dependency Management</h2>
+                    <p>"It works on my machine" is not an acceptable excuse. To achieve reproducibility, you must manage third-party libraries strictly. <strong>Do not ask users to install dependencies manually</strong>—use a package manager.</p>
+
+                    <h3>Using vcpkg</h3>
+                    <p>vcpkg integrates seamlessly with CMake via a toolchain file. Create a manifest file to declare your dependencies:</p>
+
+                    <p><strong>vcpkg.json:</strong></p>
+                    <pre class="code-snippet"><code>{
+  "name": "my-project",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "fmt",
+    "gtest",
+    "nlohmann-json",
+    "spdlog"
+  ]
+}</code></pre>
+
+                    <p>When you run CMake with the vcpkg toolchain, it automatically downloads and builds specific versions of these libraries, ensuring every developer and CI runner has the exact same binary dependencies.</p>
+
+                    <h3>Alternative: Conan</h3>
+                    <p>Conan is another popular option, especially for projects that need fine-grained control over package versions or binary compatibility. A <code>conanfile.txt</code> serves the same purpose:</p>
+
+                    <pre class="code-snippet"><code>[requires]
+fmt/10.1.1
+gtest/1.14.0
+nlohmann_json/3.11.2
+
+[generators]
+CMakeDeps
+CMakeToolchain</code></pre>
+                </section>
+
+                <section id="ci-cd" class="blog-section">
+                    <h2>6. CI/CD Pipeline (GitHub Actions)</h2>
+                    <p>A modern C++ project must build and test on multiple platforms automatically. This proves your code compiles with GCC, Clang, and MSVC.</p>
+
+                    <p><strong>.github/workflows/ci.yml:</strong></p>
+                    <pre class="code-snippet"><code>name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: ${{ matrix.os }} - ${{ matrix.config }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        config: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Setup vcpkg
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          ./vcpkg/bootstrap-vcpkg.bat
+        else
+          ./vcpkg/bootstrap-vcpkg.sh
+        fi
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . \
+          -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
+          -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
+          -DENABLE_SANITIZERS=${{ matrix.config == 'Debug' }}
+
+    - name: Build
+      run: cmake --build build --config ${{ matrix.config }}
+
+    - name: Run Tests
+      working-directory: build
+      run: ctest -C ${{ matrix.config }} --output-on-failure</code></pre>
+
+                    <h3>Key Features of This Pipeline</h3>
+                    <ol>
+                        <li><strong>Cross-Platform:</strong> Proves your code compiles with GCC (Linux), Clang (macOS), and MSVC (Windows).</li>
+                        <li><strong>Configuration Matrix:</strong> Tests both Debug (catches assertions, enables sanitizers) and Release (catches optimization bugs).</li>
+                        <li><strong>Platform-Aware Setup:</strong> Uses bash conditionals to run the correct bootstrap script per OS.</li>
+                        <li><strong>Automated Testing:</strong> If ctest fails, the Pull Request cannot be merged.</li>
+                    </ol>
+                </section>
+
+                <section id="summary" class="blog-section">
+                    <h2>Summary</h2>
+                    <p>By combining these modern practices, you elevate your C++ project from "just code" to a professional engineering product:</p>
+
+                    <ol>
+                        <li><strong>Structure:</strong> Use <code>src/</code>, <code>include/</code>, and <code>tests/</code> with clear separation of concerns.</li>
+                        <li><strong>Modularity:</strong> Use <code>add_subdirectory</code> and <code>target_link_libraries</code> with proper visibility.</li>
+                        <li><strong>Testability:</strong> Inject dependencies via interfaces; mock them with Google Mock.</li>
+                        <li><strong>Hardening:</strong> Enable strict warnings (<code>-Wall -Wextra -Werror</code>) and sanitizers in Debug.</li>
+                        <li><strong>Reproducibility:</strong> Use vcpkg or Conan manifests to lock dependency versions.</li>
+                        <li><strong>CI/CD:</strong> Automate cross-platform builds and tests on every push.</li>
+                    </ol>
+
+                    <div class="tips-box">
+                        <p><em>Modern C++ is not just about language features like concepts or coroutines—it's about the discipline of building software that is portable, verifiable, and maintainable.</em></p>
+                    </div>
+                </section>
+
+            </article>
+
+        </div> <!-- / .blog-scrollable-content -->
+
+    </div> <!-- / .blog-view-wrapper -->
+
+</body>
+</html>
