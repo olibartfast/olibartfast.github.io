@@ -1,0 +1,340 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>CMake CUDA Architecture Configuration: A Practical Guide - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- Link back to the main CSS file -->
+    <link rel="stylesheet" href="../css/main.css"/>
+    <!-- Prism Syntax Highlighting Theme CSS (Okaidia Dark Theme) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css">
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .cuda-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1.1rem;
+        }
+
+        .cuda-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        code {
+            font-size: 1.1rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+            <h1>CMake CUDA Architecture Configuration: A Practical Guide</h1>
+            <p class="post-meta">Posted on February 6, 2026</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>When building CUDA applications with CMake, one of the most common pain points is handling GPU architectures correctly. Let's explore the right way to do this in 2025.</p>
+
+                <h2>The Problem</h2>
+                <p>You've probably seen (or written) code like this:</p>
+
+                <pre class="cuda-snippet"><code class="language-cmake">set_target_properties(my_cuda_app PROPERTIES 
+    CUDA_ARCHITECTURES 70)  # Hardcoded for Tesla T4</code></pre>
+
+                <p>This works... until you try to run on a different GPU, or distribute your code to others. Not ideal.</p>
+
+                <h2>The Solution: Let CMake Do The Work</h2>
+
+                <h3>Modern Approach (CMake 3.23+)</h3>
+                <p>The simplest solution? <strong>Don't set it at all.</strong></p>
+
+                <pre class="cuda-snippet"><code class="language-cmake">cmake_minimum_required(VERSION 3.23)
+project(MyCudaApp LANGUAGES CXX CUDA)
+
+add_executable(my_app main.cu)
+
+set_target_properties(my_app PROPERTIES 
+    CUDA_SEPARABLE_COMPILATION ON
+    CXX_STANDARD 17)
+
+# That's it! CMake will auto-detect your GPU</code></pre>
+
+                <p>CMake 3.23+ automatically detects the GPU on your build machine and compiles for it.</p>
+
+                <h3>Using Special Architecture Values</h3>
+                <p>CMake provides three special values for <code>CMAKE_CUDA_ARCHITECTURES</code>:</p>
+
+                <pre class="cuda-snippet"><code class="language-cmake"># Auto-detect GPU on build machine (CMake 3.24+)
+set(CMAKE_CUDA_ARCHITECTURES native)
+
+# Compile for ALL supported architectures (slow, large binaries)
+set(CMAKE_CUDA_ARCHITECTURES all)
+
+# Compile for major architecture versions only (balanced)
+set(CMAKE_CUDA_ARCHITECTURES all-major)</code></pre>
+
+                <h3>Flexible Configuration</h3>
+                <p>For maximum flexibility, allow users to override while providing sensible defaults:</p>
+
+                <pre class="cuda-snippet"><code class="language-cmake">cmake_minimum_required(VERSION 3.23)
+project(MyCudaApp LANGUAGES CXX CUDA)
+
+# Default to native detection, but allow override
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()
+
+add_executable(my_app main.cu)
+set_target_properties(my_app PROPERTIES CUDA_SEPARABLE_COMPILATION ON)</code></pre>
+
+                <p>Users can now override at build time:</p>
+                <pre class="cuda-snippet"><code class="language-bash">cmake -DCMAKE_CUDA_ARCHITECTURES="80;86" ..</code></pre>
+
+                <h2>Understanding CUDA Compute Capabilities</h2>
+                <p>Here's a quick reference for common GPU architectures:</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Architecture</th>
+                            <th>Compute Capability</th>
+                            <th>Examples</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Pascal</td>
+                            <td>60, 61</td>
+                            <td>P100, GTX 1080</td>
+                        </tr>
+                        <tr>
+                            <td>Volta</td>
+                            <td>70</td>
+                            <td>V100, Titan V</td>
+                        </tr>
+                        <tr>
+                            <td>Turing</td>
+                            <td>75</td>
+                            <td>RTX 2080, T4</td>
+                        </tr>
+                        <tr>
+                            <td>Ampere</td>
+                            <td>80, 86</td>
+                            <td>A100, RTX 3090, Orin</td>
+                        </tr>
+                        <tr>
+                            <td>Ada Lovelace</td>
+                            <td>89</td>
+                            <td>RTX 4090, L40</td>
+                        </tr>
+                        <tr>
+                            <td>Hopper</td>
+                            <td>90</td>
+                            <td>H100, H200</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Real vs Virtual Architectures</h2>
+                <p>When you specify architectures, you can use suffixes:</p>
+
+                <pre class="cuda-snippet"><code class="language-cmake"># Generate native code only (SASS) - faster runtime, GPU-specific
+set(CMAKE_CUDA_ARCHITECTURES 80-real)
+
+# Generate PTX intermediate code - slower runtime, forward compatible
+set(CMAKE_CUDA_ARCHITECTURES 80-virtual)
+
+# Generate both (default if no suffix)
+set(CMAKE_CUDA_ARCHITECTURES 80)</code></pre>
+
+                <p><strong>Rule of thumb:</strong></p>
+                <ul>
+                    <li>Use <code>-real</code> for production builds targeting specific hardware</li>
+                    <li>Omit suffix for distribution (includes PTX for forward compatibility)</li>
+                    <li>Never use <code>-virtual</code> alone unless you have a specific reason</li>
+                </ul>
+
+                <h2>Practical Examples</h2>
+
+                <h3>Development Build (Fast Iteration)</h3>
+                <pre class="cuda-snippet"><code class="language-cmake"># Just compile for your local GPU
+set(CMAKE_CUDA_ARCHITECTURES native)</code></pre>
+
+                <h3>Distribution Build (Maximum Compatibility)</h3>
+                <pre class="cuda-snippet"><code class="language-cmake"># Cover common datacenter and consumer GPUs (2017-2024)
+set(CMAKE_CUDA_ARCHITECTURES 70-real 75-real 80-real 86-real 89 90)</code></pre>
+                <p>Note: Including one architecture without <code>-real</code> (like <code>89</code>) adds PTX for forward compatibility.</p>
+
+                <h3>Edge Deployment (Specific Hardware)</h3>
+                <pre class="cuda-snippet"><code class="language-cmake"># You know your target hardware
+set(CMAKE_CUDA_ARCHITECTURES 87)  # NVIDIA Orin</code></pre>
+
+                <h3>CI/CD Pipeline</h3>
+                <pre class="cuda-snippet"><code class="language-cmake">if(DEFINED ENV{CI})
+    # In CI, compile for multiple targets
+    set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86 89 90)
+else()
+    # Local development: use native
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()</code></pre>
+
+                <h2>Complete Example</h2>
+                <p>Here's a production-ready CMakeLists.txt:</p>
+
+                <pre class="cuda-snippet"><code class="language-cmake">cmake_minimum_required(VERSION 3.23)
+project(CudaVisionApp VERSION 1.0.0 LANGUAGES CXX CUDA)
+
+# Architecture configuration
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    if(DEFINED ENV{CI})
+        # CI: compile for multiple common architectures
+        set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86 89 90)
+        message(STATUS "CI detected: compiling for multiple architectures")
+    else()
+        # Local: auto-detect current GPU
+        set(CMAKE_CUDA_ARCHITECTURES native)
+        message(STATUS "Using native GPU architecture detection")
+    endif()
+endif()
+
+message(STATUS "CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+
+# Your CUDA executable
+add_executable(vision_app 
+    src/main.cu
+    src/kernel.cu
+)
+
+target_include_directories(vision_app PRIVATE include)
+
+set_target_properties(vision_app PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CXX_STANDARD 17
+    CUDA_STANDARD 17
+)
+
+# Optional: link against cuDNN, TensorRT, etc.
+# find_package(CUDAToolkit REQUIRED)
+# target_link_libraries(vision_app PRIVATE CUDA::cudart)</code></pre>
+
+                <h2>Build Commands</h2>
+
+                <pre class="cuda-snippet"><code class="language-bash"># Use defaults (native detection)
+cmake -B build
+cmake --build build
+
+# Override for specific architecture
+cmake -B build -DCMAKE_CUDA_ARCHITECTURES="80;86"
+cmake --build build
+
+# Override for all major architectures
+cmake -B build -DCMAKE_CUDA_ARCHITECTURES=all-major
+cmake --build build
+
+# Check what architectures were used
+cmake -B build -DCMAKE_CUDA_ARCHITECTURES=native --trace-expand | grep CUDA_ARCHITECTURES</code></pre>
+
+                <h2>Common Pitfalls</h2>
+
+                <h3>❌ Don't hardcode architectures in CMakeLists.txt</h3>
+                <pre class="cuda-snippet"><code class="language-cmake">set(CMAKE_CUDA_ARCHITECTURES 70)  # Bad!</code></pre>
+
+                <h3>✅ Do provide flexible defaults</h3>
+                <pre class="cuda-snippet"><code class="language-cmake">if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()</code></pre>
+
+                <h3>❌ Don't use <code>all</code> for production</h3>
+                <pre class="cuda-snippet"><code class="language-cmake">set(CMAKE_CUDA_ARCHITECTURES all)  # Extremely slow builds, huge binaries</code></pre>
+
+                <h3>✅ Do target your actual deployment hardware</h3>
+                <pre class="cuda-snippet"><code class="language-cmake">set(CMAKE_CUDA_ARCHITECTURES 80-real 86-real 89)  # A100, RTX30xx, RTX40xx + PTX</code></pre>
+
+                <h2>Version Compatibility</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>CMake Version</th>
+                            <th>Feature</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>3.18+</td>
+                            <td><code>CMAKE_CUDA_ARCHITECTURES</code> property</td>
+                        </tr>
+                        <tr>
+                            <td>3.23+</td>
+                            <td>Automatic architecture detection</td>
+                        </tr>
+                        <tr>
+                            <td>3.24+</td>
+                            <td><code>native</code> value support</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>If you're stuck on CMake < 3.23, you'll need to detect manually or require users to specify architectures.</p>
+
+                <h2>Conclusion</h2>
+                <p>For most projects in 2025:</p>
+                <ol>
+                    <li>Use CMake 3.23 or newer</li>
+                    <li>Set <code>CMAKE_CUDA_ARCHITECTURES</code> to <code>native</code> as default</li>
+                    <li>Allow override via command line: <code>-DCMAKE_CUDA_ARCHITECTURES="..."</code></li>
+                    <li>For distribution, explicitly list your target architectures</li>
+                </ol>
+
+                <p>This gives you fast local development while maintaining flexibility for CI/CD and distribution.</p>
+
+                <h2>Further Reading</h2>
+                <ul>
+                    <li><a href="https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html">CMake CUDA_ARCHITECTURES Documentation</a></li>
+                    <li><a href="https://developer.nvidia.com/cuda-gpus">NVIDIA CUDA Compute Capabilities</a></li>
+                    <li><a href="https://cmake.org/cmake/help/latest/manual/cmake-compile-features.7.html#cuda-standards">CMake CUDA Support Guide</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cmake.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+</body>
+</html>
