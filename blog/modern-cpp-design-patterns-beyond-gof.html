@@ -1,0 +1,887 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Modern C++ Design Patterns Beyond GoF - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1.05rem;
+        }
+
+        .code-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        code {
+            font-size: 1.05rem;
+        }
+
+        .table-of-contents,
+        .note-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents h3,
+        .note-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .table-of-contents li {
+            margin: 8px 0;
+        }
+
+        .table-of-contents a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .table-of-contents a:hover {
+            color: #007bff;
+        }
+
+        .pattern-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 1rem;
+        }
+
+        .pattern-table th,
+        .pattern-table td {
+            border: 1px solid #555;
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .pattern-table th {
+            background: #2b2b2b;
+            color: #ffffff;
+        }
+
+        .pattern-table td {
+            background: rgba(43, 43, 43, 0.35);
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>Modern C++ Design Patterns Beyond GoF</h1>
+            <p class="post-meta">Idioms, Architecture, and Production Patterns</p>
+            <p class="post-meta">Posted on June 3, 2026</p>
+            <p class="post-meta">Read time: 15 mins | Tags: C++, Software Architecture, Modern C++, Design Patterns, Systems Programming</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>In 1994, the "Gang of Four" published <em>Design Patterns: Elements of Reusable Object-Oriented Software</em>. It quickly became one of the most influential books in software architecture. However, the GoF patterns were created in an era dominated by class hierarchies, inheritance-heavy designs, runtime polymorphism, raw pointers, and mostly single-threaded desktop applications.</p>
+
+                <p>C++ has changed dramatically since then.</p>
+
+                <p>With C++11, C++17, C++20, C++23, and the upcoming C++26, the language has moved toward value semantics, RAII-based lifetime management, compile-time validation, safer abstractions, and explicit ownership. Modern C++ often favors composition over inheritance, static polymorphism over virtual dispatch when possible, and clear resource ownership over raw pointer manipulation.</p>
+
+                <p>Modern C++ is also used in very different domains from those that shaped the original GoF catalog: high-frequency trading, game engines, embedded systems, real-time computer vision, AI inference pipelines, robotics, microservices, and distributed infrastructure. These domains require patterns that deal with concurrency, data locality, hardware resources, runtime plugins, resilience, and clean architectural boundaries.</p>
+
+                <p>This article revisits classic design patterns from a Modern C++ perspective, explains where the Service Locator fits, and presents a practical taxonomy of contemporary non-GoF patterns used in production systems.</p>
+
+                <div class="note-box">
+                    <h3>Important clarification</h3>
+                    <p>Not everything discussed here is a "design pattern" in the strict GoF sense. Some are language idioms, some are architectural patterns, some are deployment patterns, and others are domain-specific production practices. The goal is not to force everything into the GoF taxonomy, but to understand which recurring solutions are useful in modern C++ systems.</p>
+                </div>
+
+                <div class="table-of-contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#modern-idioms">1. Modern C++ Idioms That Replace Some GoF Patterns</a></li>
+                        <li><a href="#dependency-management">2. Dependency Management: Service Locator vs Dependency Injection</a></li>
+                        <li><a href="#taxonomy">3. Taxonomy of Contemporary Non-GoF Patterns</a></li>
+                        <li><a href="#rule-of-thumb">4. Practical Rule of Thumb</a></li>
+                        <li><a href="#shortlist">5. The Modern C++ Developer's Shortlist</a></li>
+                        <li><a href="#conclusion">Conclusion</a></li>
+                    </ul>
+                </div>
+
+                <section id="modern-idioms" class="blog-section">
+                    <h2>1. Modern C++ Idioms That Replace Some GoF Patterns</h2>
+                    <p>Before looking at larger architectural structures, it is useful to see how Modern C++ language features can replace or simplify several classic object-oriented patterns.</p>
+
+                    <p>Many GoF patterns were designed to solve limitations of older C++ and Java-like object models. In modern C++, some of those problems are better solved with value types, templates, lambdas, concepts, <code>std::variant</code>, RAII, and type erasure.</p>
+
+                    <h3>A. Modern Visitor: <code>std::variant</code> and <code>std::visit</code></h3>
+                    <p>The classic Visitor pattern is often associated with invasive boilerplate: base classes, virtual functions, <code>accept()</code> methods, and a visitor interface with one overload per concrete type.</p>
+
+                    <p>In modern C++, if the set of possible types is known at compile time, <code>std::variant</code> and <code>std::visit</code> often provide a cleaner alternative. This approach models a closed set of alternatives without requiring inheritance.</p>
+
+                    <pre class="code-snippet"><code>#include &lt;iostream&gt;
+#include &lt;variant&gt;
+#include &lt;vector&gt;
+
+struct Circle {
+    double radius;
+};
+
+struct Square {
+    double side;
+};
+
+// Sum type: no base class, no virtual functions.
+using Shape = std::variant&lt;Circle, Square&gt;;
+
+// Helper for combining lambdas.
+template&lt;class... Ts&gt;
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+
+template&lt;class... Ts&gt;
+overloaded(Ts...) -&gt; overloaded&lt;Ts...&gt;;
+
+int main() {
+    std::vector&lt;Shape&gt; shapes{
+        Circle{2.0},
+        Square{3.0}
+    };
+
+    for (const auto&amp; shape : shapes) {
+        std::visit(overloaded{
+            [](const Circle&amp; c) {
+                std::cout &lt;&lt; "Circle area: "
+                          &lt;&lt; 3.14159 * c.radius * c.radius &lt;&lt; "\n";
+            },
+            [](const Square&amp; s) {
+                std::cout &lt;&lt; "Square area: "
+                          &lt;&lt; s.side * s.side &lt;&lt; "\n";
+            }
+        }, shape);
+    }
+}</code></pre>
+
+                    <p>This approach avoids virtual dispatch, avoids pointer-based object graphs, keeps data types simple, and makes missing cases visible at compile time. However, it is best suited for closed type sets. If you need third-party plugins to add new types at runtime, classical polymorphism or type erasure may still be a better fit.</p>
+
+                    <h3>B. Modern Strategy: Type Erasure and Callables</h3>
+                    <p>The GoF Strategy pattern encapsulates interchangeable algorithms behind a common interface. Traditionally, this means defining an abstract base class and several concrete implementations.</p>
+
+                    <p>In modern C++, many strategies can be represented directly as callables: lambdas, function objects, or type-erased wrappers such as <code>std::function</code> or C++23's <code>std::move_only_function</code>.</p>
+
+                    <pre class="code-snippet"><code>#include &lt;algorithm&gt;
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+// C++23.
+// If unavailable, use std::function or a custom type-erased wrapper.
+using SortingStrategy =
+    std::move_only_function&lt;void(std::vector&lt;int&gt;&amp;) const&gt;;
+
+class Sequence {
+public:
+    Sequence(std::vector&lt;int&gt; data, SortingStrategy sorter)
+        : data_(std::move(data)),
+          sorter_(std::move(sorter)) {}
+
+    void sort_data() {
+        sorter_(data_);
+    }
+
+    void print() const {
+        for (int value : data_) {
+            std::cout &lt;&lt; value &lt;&lt; " ";
+        }
+        std::cout &lt;&lt; "\n";
+    }
+
+private:
+    std::vector&lt;int&gt; data_;
+    SortingStrategy sorter_;
+};
+
+int main() {
+    Sequence sequence(
+        {4, 2, 5, 1, 3},
+        [](std::vector&lt;int&gt;&amp; values) {
+            std::ranges::sort(values);
+        }
+    );
+
+    sequence.sort_data();
+    sequence.print();
+}</code></pre>
+
+                    <p><code>std::move_only_function</code> is a C++23 feature and may not be fully available on all toolchains. In C++17 or C++20 codebases, common alternatives include <code>std::function</code>, custom type erasure, template-based policies, or plain function objects.</p>
+
+                    <h3>C. Static Polymorphism: Concepts Instead of Runtime Interfaces</h3>
+                    <p>Classic object-oriented design often uses pure virtual interfaces to define behavior. This is still useful when runtime polymorphism is required. But when types are known at compile time, C++20 concepts provide a cleaner alternative. Concepts let you express requirements on template parameters directly.</p>
+
+                    <pre class="code-snippet"><code>#include &lt;concepts&gt;
+#include &lt;iostream&gt;
+#include &lt;string_view&gt;
+
+template&lt;typename T&gt;
+concept Logger = requires(T logger, std::string_view message) {
+    { logger.log(message) } -&gt; std::same_as&lt;void&gt;;
+};
+
+struct ConsoleLogger {
+    void log(std::string_view message) {
+        std::cout &lt;&lt; message &lt;&lt; "\n";
+    }
+};
+
+void process(Logger auto&amp; logger) {
+    logger.log("Processing with compile-time checked logging.");
+}
+
+int main() {
+    ConsoleLogger logger;
+    process(logger);
+}</code></pre>
+
+                    <p>Concepts make constraints explicit, improve compiler diagnostics, allow inlining, and avoid virtual dispatch when runtime polymorphism is unnecessary. This is especially valuable in performance-sensitive code such as inference engines, math libraries, embedded systems, and generic infrastructure.</p>
+                </section>
+
+                <section id="dependency-management" class="blog-section">
+                    <h2>2. Dependency Management: Service Locator vs Dependency Injection</h2>
+                    <p>How components obtain their dependencies is one of the most important architectural decisions in a codebase. This brings us to the Service Locator pattern.</p>
+
+                    <h3>Where Does Service Locator Belong?</h3>
+                    <p>Service Locator is not one of the original GoF 23 patterns. It is best classified as a dependency-access or object-lookup pattern. Some taxonomies place it near creational patterns because it helps obtain objects, but its real role is dependency management.</p>
+
+                    <p>A Service Locator provides a central registry from which components can request services.</p>
+
+                    <pre class="code-snippet"><code>#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+class Logger {
+public:
+    void log(const std::string&amp; message) {
+        std::cout &lt;&lt; message &lt;&lt; "\n";
+    }
+};
+
+class ServiceLocator {
+public:
+    static void provide(Logger* logger) {
+        logger_ = logger;
+    }
+
+    static Logger&amp; get_logger() {
+        return *logger_;
+    }
+
+private:
+    static inline Logger* logger_ = nullptr;
+};</code></pre>
+
+                    <p>A class can then retrieve the dependency directly:</p>
+
+                    <pre class="code-snippet"><code>class Tracker {
+public:
+    void run() {
+        auto&amp; logger = ServiceLocator::get_logger();
+        logger.log("tracking");
+    }
+};</code></pre>
+
+                    <p>This is convenient, but it comes with serious trade-offs.</p>
+
+                    <h3>Why Service Locator Is Often Considered an Anti-Pattern</h3>
+                    <p>The main problem with Service Locator is that it hides dependencies. Looking at the public API of <code>Tracker</code>, nothing tells you that it requires a <code>Logger</code>. The dependency is invisible. This makes the class harder to understand, harder to test, and harder to reuse.</p>
+
+                    <pre class="code-snippet"><code>Tracker tracker;
+tracker.run(); // Fails if ServiceLocator has not been initialized.</code></pre>
+
+                    <p>The class appears simple, but it secretly depends on global setup. This creates several problems:</p>
+
+                    <ul>
+                        <li>hidden coupling;</li>
+                        <li>order-of-initialization issues;</li>
+                        <li>harder unit testing;</li>
+                        <li>implicit global state;</li>
+                        <li>unclear ownership;</li>
+                        <li>harder reasoning in multithreaded systems.</li>
+                    </ul>
+
+                    <p>Service Locator is not "bad" because it never works. It is problematic because it makes dependencies less visible and moves failures from compile time or construction time to runtime.</p>
+
+                    <h3>Modern Alternative: Explicit Dependency Injection</h3>
+                    <p>A more explicit alternative is Constructor Injection. Instead of allowing a class to pull dependencies from a global registry, dependencies are pushed into the object from the outside.</p>
+
+                    <pre class="code-snippet"><code>class Tracker {
+public:
+    explicit Tracker(Logger&amp; logger)
+        : logger_(logger) {}
+
+    void run() {
+        logger_.log("tracking");
+    }
+
+private:
+    Logger&amp; logger_;
+};</code></pre>
+
+                    <p>Now the dependency is visible in the constructor. This makes the design easier to test:</p>
+
+                    <pre class="code-snippet"><code>Logger logger;
+Tracker tracker{logger};
+tracker.run();</code></pre>
+
+                    <p>In production systems, dependencies are usually wired together in one place at application startup. This place is called the Composition Root.</p>
+
+                    <pre class="code-snippet"><code>int main() {
+    Logger logger;
+    Tracker tracker{logger};
+
+    tracker.run();
+}</code></pre>
+
+                    <p>The Composition Root keeps object graph construction centralized and prevents dependency-resolution logic from spreading throughout the codebase.</p>
+
+                    <h3>When Is Service Locator Still Acceptable?</h3>
+                    <table class="pattern-table">
+                        <thead>
+                            <tr>
+                                <th>Context</th>
+                                <th>Why it may be acceptable</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Legacy migration</td>
+                                <td>Allows gradual replacement of hardcoded globals.</td>
+                            </tr>
+                            <tr>
+                                <td>Plugin systems</td>
+                                <td>Helps discover runtime-registered services.</td>
+                            </tr>
+                            <tr>
+                                <td>Game engines</td>
+                                <td>Avoids passing large context objects through thousands of entities.</td>
+                            </tr>
+                            <tr>
+                                <td>Embedded systems</td>
+                                <td>Sometimes used for constrained global infrastructure.</td>
+                            </tr>
+                            <tr>
+                                <td>Cross-cutting diagnostics</td>
+                                <td>Logging, metrics, tracing, or profiling hooks.</td>
+                            </tr>
+                            <tr>
+                                <td>Test harnesses</td>
+                                <td>Can simplify controlled replacement of infrastructure.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>The rule of thumb is simple: use explicit dependency injection for core business dependencies. Use Service Locator only when the dependency is truly infrastructural, cross-cutting, or difficult to pass explicitly without damaging the design.</p>
+                </section>
+
+                <section id="taxonomy" class="blog-section">
+                    <h2>3. Taxonomy of Contemporary Non-GoF Patterns</h2>
+                    <p>Modern C++ systems use many recurring design solutions that do not belong to the original GoF catalog. A useful way to organize them is by scope.</p>
+
+                    <h3>A. Dependency and Composition Patterns</h3>
+                    <p>These patterns control how components are wired together.</p>
+
+                    <table class="pattern-table">
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>What it solves</th>
+                                <th>C++ relevance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Dependency Injection</td>
+                                <td>Pass dependencies from outside instead of constructing them internally.</td>
+                                <td>Standard for testable C++ services.</td>
+                            </tr>
+                            <tr>
+                                <td>Composition Root</td>
+                                <td>Centralize application wiring in one place.</td>
+                                <td>Keeps construction out of business logic.</td>
+                            </tr>
+                            <tr>
+                                <td>Factory Registry</td>
+                                <td>Select implementations dynamically by name or type.</td>
+                                <td>Useful for inference backends, codecs, and plugins.</td>
+                            </tr>
+                            <tr>
+                                <td>Plugin Architecture</td>
+                                <td>Load or register implementations at runtime.</td>
+                                <td>Common in engines, SDKs, and ML runtimes.</td>
+                            </tr>
+                            <tr>
+                                <td>Service Locator</td>
+                                <td>Centralized service lookup.</td>
+                                <td>Useful selectively, but dangerous if overused.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Factory Registry Example</h3>
+                    <p>A Factory Registry is especially useful in C++ systems that support multiple backends, such as TensorRT, ONNX Runtime, LibTorch, OpenVINO, Vulkan, CUDA, or CPU fallback implementations.</p>
+
+                    <pre class="code-snippet"><code>#include &lt;functional&gt;
+#include &lt;memory&gt;
+#include &lt;stdexcept&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+#include &lt;unordered_map&gt;
+
+class IBackend {
+public:
+    virtual ~IBackend() = default;
+    virtual void infer() = 0;
+};
+
+class BackendRegistry {
+public:
+    using Factory = std::function&lt;std::unique_ptr&lt;IBackend&gt;()&gt;;
+
+    void register_backend(std::string name, Factory factory) {
+        factories_.emplace(std::move(name), std::move(factory));
+    }
+
+    std::unique_ptr&lt;IBackend&gt; create(std::string_view name) const {
+        auto it = factories_.find(std::string{name});
+
+        if (it == factories_.end()) {
+            throw std::runtime_error("Unknown backend");
+        }
+
+        return it-&gt;second();
+    }
+
+private:
+    std::unordered_map&lt;std::string, Factory&gt; factories_;
+};</code></pre>
+
+                    <p>This avoids scattering large <code>if</code>, <code>else</code>, or <code>switch</code> blocks across the codebase. Instead of hardcoding every backend decision at every call site, you centralize backend creation in a registry.</p>
+
+                    <h3>B. Data, ML, and Real-Time Inference Patterns</h3>
+                    <p>High-performance systems often care more about memory layout, latency, cache behavior, and ownership than about class hierarchies. In AI inference, robotics, video processing, and real-time audio, the most important patterns are often data-centric.</p>
+
+                    <h4>Pipeline and Producer-Consumer</h4>
+                    <p>Instead of running one large sequential loop, a system can be split into stages connected by queues.</p>
+
+                    <pre class="code-snippet"><code>[Camera Capture]
+       |
+       v
+[Frame Queue]
+       |
+       v
+[Inference Engine]
+       |
+       v
+[Postprocessing]
+       |
+       v
+[Output / Tracking / Alerts]</code></pre>
+
+                    <p>A camera thread produces frames. An inference thread consumes frames and produces detections. A postprocessing stage consumes detections and produces application-level results. This is a natural fit for real-time systems because it improves CPU utilization, separates responsibilities, supports backpressure management, simplifies profiling, and isolates slow stages from fast ones.</p>
+
+                    <h4>Zero-Copy Pipeline</h4>
+                    <p>In high-throughput systems, copying large buffers is expensive. A zero-copy pipeline avoids copying raw frame data between stages. Instead, it passes ownership or references.</p>
+
+                    <pre class="code-snippet"><code>using FramePtr = std::unique_ptr&lt;Frame&gt;;
+
+ThreadSafeQueue&lt;FramePtr&gt; frame_queue;</code></pre>
+
+                    <p>A producer can move the frame into the queue, and a consumer receives ownership without copying the underlying frame buffer.</p>
+
+                    <pre class="code-snippet"><code>frame_queue.push(std::move(frame));
+
+auto frame = frame_queue.pop();</code></pre>
+
+                    <p>This is especially important for camera frames, GPU buffers, audio blocks, network packets, and tensor batches.</p>
+
+                    <h4>Object Pool</h4>
+                    <p>Repeated heap allocation in a hot path can cause latency spikes, memory fragmentation, and unpredictable performance. An Object Pool preallocates reusable resources and recycles them.</p>
+
+                    <pre class="code-snippet"><code>#include &lt;functional&gt;
+#include &lt;memory&gt;
+#include &lt;mutex&gt;
+#include &lt;vector&gt;
+
+class Buffer {
+public:
+    Buffer() {
+        // Heavy allocation, for example GPU memory or pinned host memory.
+    }
+
+    void reset() {
+        // Clear metadata before reuse.
+    }
+};
+
+class BufferPool {
+public:
+    using PoolPtr = std::unique_ptr&lt;Buffer, std::function&lt;void(Buffer*)&gt;&gt;;
+
+    PoolPtr acquire() {
+        std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+
+        if (pool_.empty()) {
+            return PoolPtr(
+                new Buffer(),
+                [this](Buffer* buffer) {
+                    recycle(buffer);
+                }
+            );
+        }
+
+        auto buffer = std::move(pool_.back());
+        pool_.pop_back();
+
+        return PoolPtr(
+            buffer.release(),
+            [this](Buffer* buffer) {
+                recycle(buffer);
+            }
+        );
+    }
+
+private:
+    void recycle(Buffer* buffer) {
+        buffer-&gt;reset();
+
+        std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+        pool_.push_back(std::unique_ptr&lt;Buffer&gt;(buffer));
+    }
+
+    std::vector&lt;std::unique_ptr&lt;Buffer&gt;&gt; pool_;
+    std::mutex mutex_;
+};</code></pre>
+
+                    <p>This example is useful pedagogically, but the deleter captures <code>this</code>. That means the <code>BufferPool</code> must outlive every <code>PoolPtr</code> returned by <code>acquire()</code>. If a buffer handle survives longer than the pool, the deleter will call a destroyed object. In production code, enforce pool lifetime carefully or store the pool state in a <code>std::shared_ptr</code>-managed control block.</p>
+
+                    <h4>Double Buffering</h4>
+                    <p>Double buffering allows one part of the system to write into one buffer while another part reads from another buffer.</p>
+
+                    <pre class="code-snippet"><code>Writer -&gt; Buffer A
+Reader -&gt; Buffer B
+
+Swap
+
+Writer -&gt; Buffer B
+Reader -&gt; Buffer A</code></pre>
+
+                    <p>This reduces blocking and is commonly used in rendering, camera acquisition, real-time audio, and shared sensor state.</p>
+
+                    <h3>C. Boundary and Migration Patterns</h3>
+                    <p>Modern C++ systems often integrate with old C APIs, vendor SDKs, drivers, external services, and legacy codebases. Good architecture keeps those messy details at the boundary.</p>
+
+                    <h4>Anti-Corruption Layer</h4>
+                    <p>An Anti-Corruption Layer, often abbreviated as ACL, protects your clean domain model from external APIs. This is especially useful when dealing with vendor camera SDKs, legacy C libraries, hardware drivers, third-party inference runtimes, external network protocols, and old internal codebases.</p>
+
+                    <pre class="code-snippet"><code>#include &lt;cstdint&gt;
+#include &lt;expected&gt;
+#include &lt;stdexcept&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+#include &lt;vector&gt;
+
+// Legacy unsafe Vendor C API.
+extern "C" {
+    struct LegacyCamera {
+        int handle;
+    };
+
+    int init_cam_sdk(LegacyCamera* camera, const char* config);
+    int read_raw_frame(LegacyCamera* camera, void* buffer, int* size);
+}
+
+class ICamera {
+public:
+    virtual ~ICamera() = default;
+
+    virtual std::expected&lt;std::vector&lt;std::uint8_t&gt;, std::string&gt;
+    capture_frame() = 0;
+};
+
+class VendorCameraACL final : public ICamera {
+public:
+    explicit VendorCameraACL(std::string_view config) {
+        if (init_cam_sdk(&amp;camera_, config.data()) != 0) {
+            throw std::runtime_error("Failed to initialize camera SDK");
+        }
+    }
+
+    std::expected&lt;std::vector&lt;std::uint8_t&gt;, std::string&gt;
+    capture_frame() override {
+        std::vector&lt;std::uint8_t&gt; buffer(1920 * 1080 * 3);
+
+        int bytes_read = 0;
+
+        if (read_raw_frame(&amp;camera_, buffer.data(), &amp;bytes_read) != 0) {
+            return std::unexpected("Hardware read failure");
+        }
+
+        buffer.resize(static_cast&lt;std::size_t&gt;(bytes_read));
+        return buffer;
+    }
+
+private:
+    LegacyCamera camera_{};
+};</code></pre>
+
+                    <p><code>std::expected</code> is a C++23 feature. Before C++23, similar behavior can be achieved with <code>tl::expected</code>, <code>boost::outcome</code>, <code>std::variant</code>, or project-specific <code>Result&lt;T, E&gt;</code> types. The key idea is not the specific type. The key idea is to keep unsafe external APIs outside the clean core of your system.</p>
+
+                    <h4>Strangler Fig</h4>
+                    <p>The Strangler Fig pattern is used to gradually migrate legacy systems. Instead of rewriting everything at once, you place a new interface around the old system and replace functionality piece by piece.</p>
+
+                    <pre class="code-snippet"><code>Old System
+    |
+    v
+Compatibility Interface
+    |
+    v
+New Modern C++ Implementation</code></pre>
+
+                    <p>Over time, the new implementation grows until the old system is no longer needed. This is safer than big-bang rewrites, especially in production systems where correctness and uptime matter.</p>
+
+                    <h4>Adapter at the Architecture Boundary</h4>
+                    <p>The Adapter pattern still matters in modern C++, but it is often most valuable at architectural boundaries. Instead of adapting every object internally, you adapt external APIs before they enter your domain model.</p>
+
+                    <pre class="code-snippet"><code>Vendor SDK Model  ---&gt;  Adapter  ---&gt;  Internal Domain Model</code></pre>
+
+                    <p>This keeps the rest of the codebase independent from vendor-specific data structures.</p>
+
+                    <h3>D. Resilience and Cloud-Native Patterns</h3>
+                    <p>C++ is increasingly used in distributed systems, backend services, robotics fleets, edge devices, and cloud-native infrastructure. In those environments, failures are normal. Networks fail. Services time out. GPUs run out of memory. Queues grow. Downstream systems become overloaded.</p>
+
+                    <h4>Circuit Breaker</h4>
+                    <p>A Circuit Breaker wraps fragile operations, such as remote calls, database queries, or external service requests. If too many failures occur, the circuit opens and future calls fail fast for a period of time.</p>
+
+                    <pre class="code-snippet"><code>Closed    -&gt; calls allowed
+Open      -&gt; calls fail fast
+Half-open -&gt; limited trial calls allowed</code></pre>
+
+                    <p>This prevents the system from wasting threads and resources waiting on operations that are likely to fail.</p>
+
+                    <h4>Bulkhead</h4>
+                    <p>The Bulkhead pattern isolates resources so that one overloaded subsystem does not take down the whole application.</p>
+
+                    <pre class="code-snippet"><code>Thread Pool A -&gt; video processing
+Thread Pool B -&gt; REST API
+Thread Pool C -&gt; telemetry</code></pre>
+
+                    <p>If the REST API is overloaded, the video processing pipeline can continue running. This is especially useful in systems that combine real-time processing with management APIs, dashboards, telemetry, or background tasks.</p>
+
+                    <h4>Retry with Exponential Backoff</h4>
+                    <p>Retries are useful for transient failures, but retrying too aggressively can make the situation worse. Exponential backoff increases the delay between attempts:</p>
+
+                    <pre class="code-snippet"><code>100 ms -&gt; 200 ms -&gt; 400 ms -&gt; 800 ms -&gt; ...</code></pre>
+
+                    <p>In distributed systems, this is often combined with jitter to prevent many clients from retrying at exactly the same time.</p>
+
+                    <h3>E. Enterprise, Domain, and Event-Driven Patterns</h3>
+                    <p>Some non-GoF patterns are especially common in enterprise systems, event-driven systems, and domain-driven design. They are not specific to C++, but they can be useful when C++ is used in backend or infrastructure services.</p>
+
+                    <h4>CQRS</h4>
+                    <p>CQRS stands for Command Query Responsibility Segregation. The idea is to separate write operations from read operations.</p>
+
+                    <pre class="code-snippet"><code>Commands -&gt; modify state
+Queries  -&gt; read state</code></pre>
+
+                    <p>This can simplify scaling and performance tuning. For example, a write path may enforce domain invariants and transactions, while a read path may use optimized projections or cache-friendly views.</p>
+
+                    <h4>Repository</h4>
+                    <p>The Repository pattern hides persistence details behind a collection-like interface. Instead of scattering SQL, file access, or remote database calls throughout the business logic, the domain code talks to a repository.</p>
+
+                    <pre class="code-snippet"><code>class UserRepository {
+public:
+    virtual ~UserRepository() = default;
+
+    virtual std::optional&lt;User&gt; find_by_id(UserId id) = 0;
+    virtual void save(const User&amp; user) = 0;
+};</code></pre>
+
+                    <p>This is useful when the business logic should not depend directly on the database implementation.</p>
+
+                    <h4>Unit of Work</h4>
+                    <p>Unit of Work groups multiple changes into a single transactional operation.</p>
+
+                    <pre class="code-snippet"><code>begin transaction
+    modify object A
+    modify object B
+    modify object C
+commit</code></pre>
+
+                    <p>This is common in systems that need consistency across multiple repository operations.</p>
+
+                    <h4>Sidecar and Backend-for-Frontend</h4>
+                    <p>Sidecar and BFF are not C++ design patterns in the traditional sense. They are architectural and deployment patterns. A Sidecar is a helper process or container deployed alongside the main application. It may handle telemetry, logging, TLS, service discovery, or proxying.</p>
+
+                    <pre class="code-snippet"><code>[C++ Service] &lt;-&gt; [Sidecar Proxy]</code></pre>
+
+                    <p>A Backend-for-Frontend, or BFF, is a dedicated backend tailored to a specific frontend or client type. These patterns are common in cloud-native systems where infrastructure concerns are separated from core application logic.</p>
+                </section>
+
+                <section id="rule-of-thumb" class="blog-section">
+                    <h2>4. Practical Rule of Thumb</h2>
+                    <p>Here is a practical decision matrix for modern C++ systems.</p>
+
+                    <table class="pattern-table">
+                        <thead>
+                            <tr>
+                                <th>Situation</th>
+                                <th>Prefer</th>
+                                <th>Avoid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Core dependency required by a class</td>
+                                <td>Constructor Injection</td>
+                                <td>Service Locator or hidden globals</td>
+                            </tr>
+                            <tr>
+                                <td>Wiring many objects at startup</td>
+                                <td>Composition Root</td>
+                                <td>Scattered initialization</td>
+                            </tr>
+                            <tr>
+                                <td>Selecting implementation at runtime</td>
+                                <td>Factory Registry / Plugin Pattern</td>
+                                <td>Hardcoded conditional branches everywhere</td>
+                            </tr>
+                            <tr>
+                                <td>Integrating with C APIs or vendor SDKs</td>
+                                <td>Anti-Corruption Layer</td>
+                                <td>Spreading raw SDK calls across business logic</td>
+                            </tr>
+                            <tr>
+                                <td>Optional cross-cutting infrastructure</td>
+                                <td>Carefully controlled Service Locator</td>
+                                <td>Raw global variables</td>
+                            </tr>
+                            <tr>
+                                <td>High-throughput frame processing</td>
+                                <td>Pipeline + Producer-Consumer</td>
+                                <td>One massive sequential loop</td>
+                            </tr>
+                            <tr>
+                                <td>Passing large buffers</td>
+                                <td>Move ownership or references</td>
+                                <td>Repeated deep copies</td>
+                            </tr>
+                            <tr>
+                                <td>High-frequency allocations</td>
+                                <td>RAII + Object Pool</td>
+                                <td>Repeated hot-path heap allocation</td>
+                            </tr>
+                            <tr>
+                                <td>Runtime failure on hot path</td>
+                                <td><code>expected</code> / result types</td>
+                                <td>Error codes spread everywhere</td>
+                            </tr>
+                            <tr>
+                                <td>Remote service instability</td>
+                                <td>Circuit Breaker + Backoff</td>
+                                <td>Infinite retries</td>
+                            </tr>
+                            <tr>
+                                <td>Resource overload</td>
+                                <td>Bulkhead isolation</td>
+                                <td>Shared thread pool for everything</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="shortlist" class="blog-section">
+                    <h2>5. The Modern C++ Developer's Shortlist</h2>
+                    <p>If you work on modern C++ systems, especially in backend, AI inference, robotics, computer vision, or high-performance computing, the most useful patterns and idioms to master are the following.</p>
+
+                    <h3>RAII and Rule of Zero</h3>
+                    <p>RAII is the foundation of reliable C++. Resources should be acquired in constructors and released in destructors. Whenever possible, ownership should be expressed using standard library types such as <code>std::vector</code>, <code>std::unique_ptr</code>, <code>std::shared_ptr</code>, <code>std::lock_guard</code>, and <code>std::jthread</code>.</p>
+
+                    <p>The Rule of Zero says that most classes should not manually define destructors, copy constructors, move constructors, or assignment operators. Let the members manage themselves.</p>
+
+                    <h3>Dependency Injection and Composition Root</h3>
+                    <p>Make dependencies explicit. A class should clearly state what it needs to function. Constructor injection makes code easier to test, easier to understand, and easier to maintain. The Composition Root keeps dependency wiring in one place.</p>
+
+                    <h3>Type Erasure and Policy-Based Design</h3>
+                    <p>Use type erasure when you need runtime flexibility without exposing inheritance-heavy APIs. Use policy-based design when behavior can be selected at compile time. Both are powerful alternatives to traditional object-oriented hierarchies.</p>
+
+                    <h3>Concepts and Static Polymorphism</h3>
+                    <p>Use concepts to express compile-time requirements clearly. They are especially useful in generic libraries, performance-sensitive code, and template-heavy systems.</p>
+
+                    <h3>Pipeline and Producer-Consumer</h3>
+                    <p>Use pipelines to split real-time processing into independent stages. This is one of the most important patterns for video processing, AI inference, robotics, streaming systems, and data acquisition.</p>
+
+                    <h3>Object Pool and Zero-Copy Ownership</h3>
+                    <p>Avoid repeated allocation and copying in hot paths. Use object pools, move semantics, preallocated buffers, and ownership-passing queues to reduce latency and improve predictability.</p>
+
+                    <h3>Anti-Corruption Layer</h3>
+                    <p>Keep unsafe, ugly, or unstable external APIs at the boundary. Do not let vendor SDK types, C APIs, or legacy models spread throughout your internal codebase.</p>
+
+                    <h3>Circuit Breaker and Bulkhead</h3>
+                    <p>In distributed or service-oriented systems, design for failure. Use circuit breakers to fail fast when dependencies are unhealthy. Use bulkheads to isolate critical resources.</p>
+                </section>
+
+                <section id="conclusion" class="blog-section">
+                    <h2>Conclusion</h2>
+                    <p>The original GoF patterns are still historically important, but modern C++ requires a broader vocabulary.</p>
+
+                    <p>Today, good C++ architecture is not only about class diagrams. It is about ownership, lifetimes, data movement, concurrency, compile-time constraints, hardware resources, dependency boundaries, and operational resilience.</p>
+
+                    <p>Some classic patterns remain useful. Others are replaced by language features. Many new recurring solutions come from domains the GoF book did not address: real-time systems, cloud infrastructure, AI inference, GPU programming, and distributed services.</p>
+
+                    <p>The modern C++ mindset is this:</p>
+
+                    <ul>
+                        <li>Prefer explicit ownership.</li>
+                        <li>Prefer explicit dependencies.</li>
+                        <li>Prefer value semantics when possible.</li>
+                        <li>Prefer compile-time validation when practical.</li>
+                        <li>Protect your domain from messy boundaries.</li>
+                        <li>Design hot paths around data movement, not object hierarchies.</li>
+                        <li>Design distributed systems assuming failure will happen.</li>
+                    </ul>
+
+                    <p>By moving from inheritance-heavy designs toward RAII, composition, concepts, pipelines, type erasure, and clean architectural boundaries, modern C++ systems become faster, safer, easier to test, and better prepared for production workloads.</p>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
