@@ -1,66 +1,154 @@
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
 <head>
     <title>Francesco Oliva</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <!-- Link to the main CSS file -->
-    <link rel="stylesheet" href="css/main.css"/>
-    <!-- No Prism needed here unless you add code -->
+    <meta name="description" content="Francesco Oliva — computer vision, machine learning and GPU computing."/>
+    <link rel="stylesheet" href="css/site.css"/>
 </head>
 <body>
 
-<!-- This is the main container for the centered content -->
-<div id="main">
-    <!-- Header section with your name, subtitle, and links -->
-    <header id="header">
-        <h1>Francesco Oliva</h1>
-        <p>High-Performance ML &amp; Computer Vision &nbsp;&bull;&nbsp; Heterogeneous AI Systems</p>
-        <nav>
-            <ul>
-                <li>
-                    <a class="icon fa-linkedin" href="https://www.linkedin.com/in/l1fran3">
-                        <span class="label">LinkedIn</span>
-                    </a>
-                </li>
-                <li>
-                    <a class="icon fa-github" href="https://github.com/olibartfast">
-                        <span class="label">GitHub</span>
-                    </a>
-                </li>
-                <li>
-                    <a class="icon fa-youtube" href="https://www.youtube.com/user/olibartfast">
-                        <span class="label">YouTube</span>
-                    </a>
-                </li>
-                    <li>
-                        <a class="icon fa-book" href="https://www.coursera.org/user/b7ef28a07fff79dfcb44e7119d7de3a7">
-                            <span class="label">Coursera</span>
-                        </a>
-                    </li>
-                 <!-- Blog Link points to static HTML index -->
-                 <li>
-                    <a class="icon fa-pencil" href="blog/index.html"> <!-- Correct link for static setup -->
-                        <span class="label">Blog</span>
-                    </a>
-                </li>
-            </ul>
-            <br>
-            <div>
-                <!-- Button linking to GitHub repositories -->
-                <a class="btn btn-xl btn-outline-light" href="https://github.com/olibartfast?tab=repositories">
-                     <i class="fa fa-github mr-2"></i> Check my projects here!
-                </a>
+<nav class="nav">
+    <span class="nav-brand">Francesco Oliva</span>
+    <a href="#about">About</a>
+    <a href="#skills">Skills</a>
+    <a href="#blog">Blog</a>
+    <a href="#contact">Contact</a>
+    <a href="blog/index.html" class="btn btn-primary blueprint">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Read the blog
+    </a>
+</nav>
+
+<div class="page">
+
+    <!-- Hero -->
+    <section class="section-hero">
+        <h1 class="hero-title"><span style="display:block;">Francesco Oliva</span></h1>
+        <p class="hero-sub">High-Performance ML &amp; Computer Vision &middot; Heterogeneous AI Systems</p>
+        <div class="actions">
+            <a href="#contact" class="btn btn-primary blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Get in touch
+            </a>
+            <a href="https://github.com/olibartfast?tab=repositories" class="btn btn-secondary blueprint" target="_blank" rel="noopener">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>View projects on GitHub
+            </a>
+        </div>
+    </section>
+
+    <!-- 01 · About -->
+    <!-- A portrait figure goes here when there's an image to use:
+         <figure class="blueprint duotone"><img src="img/portrait.jpg" alt=""> …corners… </figure> -->
+    <section id="about" class="section">
+        <span class="section-label">01 &middot; About</span>
+        <hr class="rule">
+        <h2 class="section-title">Building ML systems that hold up outside the notebook</h2>
+        <p class="prose">
+            I'm a machine learning engineer focused on computer vision and inference at scale — taking models
+            from research code to production across GPUs, edge accelerators, and everything in between. I care
+            about the parts most people skip: latency budgets, memory footprints, and pipelines that keep
+            working after the demo ends.
+        </p>
+        <p class="prose">
+            Outside of shipping, I write about deployment tradeoffs and heterogeneous compute on the blog below.
+        </p>
+    </section>
+
+    <!-- 02 · Skills -->
+    <section id="skills" class="section">
+        <span class="section-label">02 &middot; Skills &amp; stack</span>
+        <hr class="rule rule-wide">
+        <div class="grid-3">
+            <div class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">Languages &amp; ML</div>
+                <div class="card-title">Core stack</div>
+                <div class="tag-row">
+                    <span class="tag tag-accent">C++</span>
+                    <span class="tag tag-accent">Python</span>
+                    <span class="tag tag-accent">PyTorch</span>
+                    <span class="tag tag-accent">ONNX</span>
+                </div>
             </div>
-        </nav>
-    </header>
-    <!-- Footer can remain empty or be used later -->
-    <footer>
+            <div class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">Inference &amp; deployment</div>
+                <div class="card-title">Shipping models</div>
+                <div class="tag-row">
+                    <span class="tag tag-outline">TensorRT</span>
+                    <span class="tag tag-outline">OpenCV</span>
+                    <span class="tag tag-outline">CUDA</span>
+                    <span class="tag tag-outline">Triton</span>
+                </div>
+            </div>
+            <div class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">Systems</div>
+                <div class="card-title">Infra &amp; edge</div>
+                <div class="tag-row">
+                    <span class="tag tag-neutral">Docker</span>
+                    <span class="tag tag-neutral">Linux</span>
+                    <span class="tag tag-neutral">Jetson</span>
+                    <span class="tag tag-neutral">Kubernetes</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 03 · From the blog -->
+    <section id="blog" class="section">
+        <div class="section-head">
+            <span class="section-label">03 &middot; From the blog</span>
+            <a href="blog/index.html" class="btn btn-ghost">All posts</a>
+        </div>
+        <hr class="rule rule-wide">
+        <div class="grid-3">
+            <a href="blog/modern-cpp-design-patterns-beyond-gof.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">June 3, 2026</div>
+                <div class="card-title">Modern C++ Design Patterns Beyond GoF</div>
+                <p class="card-body">A taxonomy of modern C++ idioms, dependency patterns, real-time pipelines, and production architecture past the GoF catalog.</p>
+            </a>
+            <a href="blog/cmake-cuda-architectures-guide.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">February 6, 2026</div>
+                <div class="card-title">CMake CUDA Architecture Configuration: A Practical Guide</div>
+                <p class="card-body">Handling GPU architectures correctly in CMake 3.23+, from native detection to production best practices.</p>
+            </a>
+            <a href="blog/modern-cpp-projects-guide.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">December 20, 2025</div>
+                <div class="card-title">The Ultimate Guide to Modern C++ Projects</div>
+                <p class="card-body">Setting up, structuring, and managing modern C++ projects with the tools and workflows that actually hold up.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- 04 · Contact -->
+    <section id="contact" class="section section-last">
+        <span class="section-label">04 &middot; Contact</span>
+        <hr class="rule">
+        <h2 class="section-title">Let's talk</h2>
+        <p class="prose" style="margin-bottom: var(--space-4);">
+            Happy to talk about computer vision and ML infrastructure.
+        </p>
+        <div class="actions" style="margin-top:0; margin-bottom: var(--space-5);">
+            <a href="mailto:olibartfast@gmail.com" class="btn btn-primary blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Email me
+            </a>
+        </div>
+        <div class="social">
+            <a href="https://www.linkedin.com/in/l1fran3" target="_blank" rel="noopener">LinkedIn</a>
+            <a href="https://github.com/olibartfast" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://www.youtube.com/user/olibartfast" target="_blank" rel="noopener">YouTube</a>
+            <a href="https://www.coursera.org/user/b7ef28a07fff79dfcb44e7119d7de3a7" target="_blank" rel="noopener">Coursera</a>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        &copy; 2026 Francesco Oliva
     </footer>
 </div>
-
-<!-- Add JavaScript files if needed later -->
-<!-- <script src="js/main.js"></script> -->
 
 </body>
 </html>

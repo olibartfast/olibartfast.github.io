@@ -1,88 +1,126 @@
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
 <head>
     <title>Blog - Francesco Oliva</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <!-- Link back to the main CSS file -->
-    <link rel="stylesheet" href="../css/main.css"/>
+    <meta name="description" content="Notes on computer vision, machine learning, C++ and GPU computing."/>
+    <link rel="stylesheet" href="../css/site.css"/>
 </head>
-<!-- Add class to body for specific blog page styling -->
-<body class="blog-page">
+<body>
 
-    <!-- This outer wrapper helps center the content area -->
-    <div class="blog-view-wrapper">
+<nav class="nav">
+    <span class="nav-brand">Francesco Oliva</span>
+    <a href="../index.html#about">About</a>
+    <a href="../index.html#skills">Skills</a>
+    <a href="index.html" aria-current="page">Blog</a>
+    <a href="../index.html#contact">Contact</a>
+    <a href="../index.html" class="btn btn-primary blueprint">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Back home
+    </a>
+</nav>
 
-        <!-- Back button positioned relative to the wrapper -->
-        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
-            <span class="label">Back</span>
-        </a>
+<div class="page">
 
-        <!-- This inner container will hold the scrollable content -->
-        <div class="blog-scrollable-content">
+    <section class="section-hero" style="padding-bottom: calc(2 * var(--space-6));">
+        <span class="section-label">Blog</span>
+        <hr class="rule">
+        <h1 class="page-title">Notes on ML &amp; CV</h1>
+        <p class="prose" style="margin-top: var(--space-3);">
+            Thoughts and explorations in Computer Vision, Machine Learning, C++, and more.
+        </p>
+    </section>
 
-            <!-- === Blog Index Content Start === -->
-            <h1>Blog</h1>
-            <p>Thoughts and explorations in Computer Vision, Machine Learning, C++, and more.</p>
-            <hr>
-            <ul class="blog-list">
-                <li>
-                    <h2><a href="modern-cpp-design-patterns-beyond-gof.html">Modern C++ Design Patterns Beyond GoF: Idioms, Architecture, and Production Patterns</a></h2>
-                    <p class="post-meta">Posted on June 3, 2026</p>
-                    <p>A practical taxonomy of modern C++ idioms, dependency patterns, real-time pipelines, boundary patterns, and production architecture beyond the original GoF catalog...</p>
-                </li>
-                <li>
-                    <h2><a href="cmake-cuda-architectures-guide.html">CMake CUDA Architecture Configuration: A Practical Guide</a></h2>
-                    <p class="post-meta">Posted on February 6, 2026</p>
-                    <p>A practical guide to handling GPU architectures correctly in CMake 3.23+, covering native detection, special values, and production best practices...</p>
-                </li>
-                <li>
-                    <h2><a href="modern-cpp-projects-guide.html">The Ultimate Guide to Modern C++ Projects</a></h2>
-                    <p class="post-meta">Posted on December 20, 2025</p>
-                    <p>A comprehensive guide to setting up, structuring, and managing modern C++ projects with best practices, tools, and workflows...</p>
-                </li>
-                <li>
-                    <h2><a href="rabbitmq-mqtt-comparison-guide.html">Understanding RabbitMQ and MQTT: A Complete Comparison Guide</a></h2>
-                    <p class="post-meta">Posted on December 1, 2025</p>
-                    <p>A deep dive into message brokers vs protocols. Learn when to use RabbitMQ, when to choose MQTT, and how to leverage both in hybrid architectures...</p>
-                </li>
-                <li>
-                    <h2><a href="generic-useful-kubectl-commands.html">Generic Useful kubectl Commands</a></h2>
-                    <p class="post-meta">Posted on November 19, 2025</p>
-                    <p>A compact cheatsheet of kubectl commands for everyday cluster inspection, debugging, and troubleshooting.</p>
-                </li>
-                <li>
-                    <h2><a href="object-detection-architectures-guide.html">Object Detection Architectures Guide</a></h2>
-                    <p class="post-meta">Posted on September 14, 2025</p>
-                    <p>A comprehensive guide to major detector families including YOLO, RT-DETR, and YOLO-NAS. Explore architectures, trade-offs, and deployment considerations...</p>
-                </li>
-                <li>
-                    <h2><a href="ninja-build-system-tutorial.html">Ninja Build System Tutorial for C++ Projects</a></h2>
-                    <p class="post-meta">Posted on August 28, 2025</p>
-                    <p>A comprehensive guide to using Ninja, the fast build system designed for speed. Learn setup, commands, and best practices for C++ projects...</p>
-                </li>
-                <li>
-                    <h2><a href="cuda-parallel-programming-patterns.html">Parallel Programming Pattern Fundamentals in CUDA</a></h2>
-                    <p class="post-meta">Posted on June 20, 2025</p>
-                    <p>A comprehensive guide to core parallel programming patterns in CUDA, from reductions and scans to cooperative groups and stream parallelism...</p>
-                </li>
-                <li>
-                    <h2><a href="demystifying-cmakelists-txt.html">Demystifying CMakeLists.txt: A Guide to its Core Components</a></h2>
-                    <p class="post-meta">Posted on June 1, 2025</p>
-                    <p>A comprehensive guide to understanding the essential building blocks of CMakeLists.txt files, from basic commands to advanced concepts...</p>
-                </li>
-                <li>
-                    <h2><a href="runtime-type-identification-cpp.html">Runtime Type Identification and Polymorphism in Modern C++</a></h2>
-                    <p class="post-meta">Posted on April 2, 2025</p>
-                    <p>Exploring techniques like dynamic_cast, typeid, virtual functions, and enums for determining object types at runtime...</p>
-                </li>
-                <!-- Add more list items here for future posts -->
-            </ul>
-            <!-- === Blog Index Content End === -->
+    <section style="padding-bottom: calc(2 * var(--space-6));">
+        <div class="grid-3">
 
-        </div> <!-- / .blog-scrollable-content -->
+            <a href="modern-cpp-design-patterns-beyond-gof.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">June 3, 2026</div>
+                <div class="card-title">Modern C++ Design Patterns Beyond GoF: Idioms, Architecture, and Production Patterns</div>
+                <p class="card-body">A practical taxonomy of modern C++ idioms, dependency patterns, real-time pipelines, boundary patterns, and production architecture beyond the original GoF catalog.</p>
+                <div class="card-meta"><span>C++</span></div>
+            </a>
 
-    </div> <!-- / .blog-view-wrapper -->
+            <a href="cmake-cuda-architectures-guide.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">February 6, 2026</div>
+                <div class="card-title">CMake CUDA Architecture Configuration: A Practical Guide</div>
+                <p class="card-body">A practical guide to handling GPU architectures correctly in CMake 3.23+, covering native detection, special values, and production best practices.</p>
+                <div class="card-meta"><span>Build systems</span></div>
+            </a>
+
+            <a href="modern-cpp-projects-guide.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">December 20, 2025</div>
+                <div class="card-title">The Ultimate Guide to Modern C++ Projects</div>
+                <p class="card-body">A comprehensive guide to setting up, structuring, and managing modern C++ projects with best practices, tools, and workflows.</p>
+                <div class="card-meta"><span>C++</span></div>
+            </a>
+
+            <a href="rabbitmq-mqtt-comparison-guide.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">December 1, 2025</div>
+                <div class="card-title">Understanding RabbitMQ and MQTT: A Complete Comparison Guide</div>
+                <p class="card-body">A deep dive into message brokers vs protocols. When to use RabbitMQ, when to choose MQTT, and how to leverage both in hybrid architectures.</p>
+                <div class="card-meta"><span>Messaging</span></div>
+            </a>
+
+            <a href="generic-useful-kubectl-commands.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">November 19, 2025</div>
+                <div class="card-title">Generic Useful kubectl Commands</div>
+                <p class="card-body">A compact cheatsheet of kubectl commands for everyday cluster inspection, debugging, and troubleshooting.</p>
+                <div class="card-meta"><span>Kubernetes</span></div>
+            </a>
+
+            <a href="object-detection-architectures-guide.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">September 14, 2025</div>
+                <div class="card-title">Object Detection Architectures Guide</div>
+                <p class="card-body">A comprehensive guide to major detector families including YOLO, RT-DETR, and YOLO-NAS — architectures, trade-offs, and deployment considerations.</p>
+                <div class="card-meta"><span>Computer vision</span></div>
+            </a>
+
+            <a href="ninja-build-system-tutorial.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">August 28, 2025</div>
+                <div class="card-title">Ninja Build System Tutorial for C++ Projects</div>
+                <p class="card-body">A comprehensive guide to using Ninja, the fast build system designed for speed. Setup, commands, and best practices for C++ projects.</p>
+                <div class="card-meta"><span>Build systems</span></div>
+            </a>
+
+            <a href="cuda-parallel-programming-patterns.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">June 20, 2025</div>
+                <div class="card-title">Parallel Programming Pattern Fundamentals in CUDA</div>
+                <p class="card-body">Core parallel programming patterns in CUDA, from reductions and scans to cooperative groups and stream parallelism.</p>
+                <div class="card-meta"><span>CUDA</span></div>
+            </a>
+
+            <a href="demystifying-cmakelists-txt.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">June 1, 2025</div>
+                <div class="card-title">Demystifying CMakeLists.txt: A Guide to its Core Components</div>
+                <p class="card-body">Understanding the essential building blocks of CMakeLists.txt files, from basic commands to advanced concepts.</p>
+                <div class="card-meta"><span>Build systems</span></div>
+            </a>
+
+            <a href="runtime-type-identification-cpp.html" class="card blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="card-kicker">April 2, 2025</div>
+                <div class="card-title">Runtime Type Identification and Polymorphism in Modern C++</div>
+                <p class="card-body">Exploring dynamic_cast, typeid, virtual functions, and enums for determining object types at runtime.</p>
+                <div class="card-meta"><span>C++</span></div>
+            </a>
+
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        &copy; 2026 Francesco Oliva
+    </footer>
+</div>
 
 </body>
 </html>
