@@ -48,8 +48,8 @@ body {
     background: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-body);
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: 17px;
+    line-height: 1.6;
     font-weight: 400;
     text-wrap: pretty;
     -webkit-font-smoothing: antialiased;
@@ -92,7 +92,7 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
 
 .section-label {
     display: block;
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-weight: 600;
@@ -109,15 +109,15 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
 .rule-wide { margin-bottom: var(--space-5); }
 
 .section-title {
-    font-size: 28px;
+    font-size: 34px;
     text-transform: uppercase;
     letter-spacing: 0.02em;
     margin: 0 0 var(--space-3);
 }
 
 .prose {
-    font-size: 16px;
-    line-height: 1.6;
+    font-size: 19px;
+    line-height: 1.65;
     max-width: 60ch;
     margin: 0;
     color: var(--color-text);
@@ -163,13 +163,13 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
     text-decoration: none;
     font-family: var(--font-heading);
     font-weight: var(--font-heading-weight);
-    font-size: 14px;
+    font-size: 17px;
     line-height: 1.2;
     color: var(--color-heading);
     background: transparent;
     border: 1px solid var(--color-divider);
     border-radius: 0;
-    padding: var(--space-2) calc(var(--space-3) * 1.2);
+    padding: var(--space-3) calc(var(--space-4) * 1.2);
     transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 }
 .btn:hover { text-decoration: none; color: var(--color-heading); }
@@ -189,12 +189,12 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    padding: var(--space-3);
+    padding: var(--space-5);
     background: transparent;
     border-radius: 0;
 }
 .card-kicker {
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-muted);
@@ -202,16 +202,16 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
 .card-title {
     font-family: var(--font-heading);
     font-weight: var(--font-heading-weight);
-    font-size: 17px;
+    font-size: 21px;
     line-height: 1.2;
     color: var(--color-heading);
 }
-.card-body { margin: 0; font-size: 13px; color: #cccccc; flex: 1; }
+.card-body { margin: 0; font-size: 16px; line-height: 1.55; color: #cccccc; flex: 1; }
 .card-meta {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
+    font-size: 13px;
     color: var(--color-muted);
 }
 a.card {
@@ -238,9 +238,9 @@ a.card:hover .card-title { color: var(--color-link-hover); }
 .tag {
     display: inline-flex;
     align-items: center;
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 0.02em;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 0;
 }
 .tag-accent { background: rgba(127, 191, 237, 0.16); color: var(--color-link); }
@@ -258,11 +258,11 @@ a.card:hover .card-title { color: var(--color-link-hover); }
 .nav-brand {
     font-family: var(--font-heading);
     font-weight: var(--font-heading-weight);
-    font-size: 18px;
+    font-size: 22px;
     margin-right: auto;
     color: var(--color-heading);
 }
-.nav a { color: var(--color-text); text-decoration: none; font-size: 14px; }
+.nav a { color: var(--color-text); text-decoration: none; font-size: 17px; }
 .nav a:hover { color: var(--color-heading); text-decoration: none; }
 .nav a[aria-current] { color: var(--color-heading); }
 .nav a.btn { color: var(--color-heading); }
@@ -273,7 +273,7 @@ a.card:hover .card-title { color: var(--color-link-hover); }
 
 .site-footer {
     padding: var(--space-6) 0;
-    font-size: 13px;
+    font-size: 15px;
     color: var(--color-muted);
     border-top: 1px solid var(--color-divider);
 }
@@ -287,8 +287,8 @@ a.card:hover .card-title { color: var(--color-link-hover); }
     margin: 0;
 }
 .hero-sub {
-    font-size: 18px;
-    line-height: 1.6;
+    font-size: 22px;
+    line-height: 1.5;
     max-width: 60ch;
     margin: var(--space-4) 0 0;
     color: var(--color-text);
@@ -311,5 +311,7 @@ a.card:hover .card-title { color: var(--color-link-hover); }
     .grid-3 { grid-template-columns: 1fr; }
     .nav { gap: var(--space-3); row-gap: var(--space-2); }
     .nav-brand { flex: 1 0 100%; margin-right: 0; }
-    .section-title { font-size: 24px; }
+    .section-title { font-size: 28px; }
+    .prose { font-size: 17px; }
+    .hero-sub { font-size: 19px; }
 }
