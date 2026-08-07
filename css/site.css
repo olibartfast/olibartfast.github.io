@@ -1,32 +1,41 @@
 /* ==========================================================================
-   Site styles — "Industry" layout on the original dark palette.
-   Colors come from the old site: #302e2f ground, white headings, #ddd body,
-   #444 rules, and #7fbfed for links (the original blog link blue).
+   Site styles — "Industry" layout, cyberpunk terminal palette.
+   Near-black ground, cyan primary / magenta secondary neon, hairline grid,
+   scanline overlay and glitched display type.
    Blog *post* pages still use css/main.css.
    ========================================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&family=Share+Tech+Mono&display=swap");
 
 :root {
-    --color-bg: #302e2f;
-    --color-text: #dddddd;
-    --color-heading: #ffffff;
-    --color-muted: #999999;
-    --color-divider: #444444;
+    --color-bg: #07080d;
+    --color-bg-elev: rgba(13, 18, 28, 0.72);
+    --color-text: #c4cfe0;
+    --color-heading: #ecf5ff;
+    --color-muted: #6d7d96;
+    --color-divider: #1d2a3d;
 
-    /* Structural accent is the same white the old site used for its
-       outlined nav icons and buttons. */
-    --color-accent: #ffffff;
-    --color-accent-soft: rgba(255, 255, 255, 0.175);
-    --color-accent-softer: rgba(255, 255, 255, 0.08);
+    /* Neon accents */
+    --color-cyan: #00e5ff;
+    --color-magenta: #ff2e88;
+    --color-amber: #ffcc4d;
 
-    /* Link blue, carried over from the old blog. */
-    --color-link: #7fbfed;
-    --color-link-hover: #a1d3f1;
+    /* Structural accent is now the cyan, not white. */
+    --color-accent: var(--color-cyan);
+    --color-accent-soft: rgba(0, 229, 255, 0.14);
+    --color-accent-softer: rgba(0, 229, 255, 0.06);
 
-    --font-heading: "Barlow Condensed", system-ui, sans-serif;
+    --glow-cyan: 0 0 10px rgba(0, 229, 255, 0.45), 0 0 26px rgba(0, 229, 255, 0.16);
+    --glow-magenta: 0 0 10px rgba(255, 46, 136, 0.45), 0 0 26px rgba(255, 46, 136, 0.16);
+    --text-glow-cyan: 0 0 12px rgba(0, 229, 255, 0.55);
+
+    --color-link: #4fe3ff;
+    --color-link-hover: #9df3ff;
+
+    --font-heading: "Chakra Petch", "Barlow Condensed", system-ui, sans-serif;
     --font-heading-weight: 600;
     --font-body: "Barlow", system-ui, sans-serif;
+    --font-mono: "Share Tech Mono", ui-monospace, "JetBrains Mono", Consolas, monospace;
 
     --space-1: 3.4px;
     --space-2: 6.8px;
@@ -45,6 +54,7 @@ html { scroll-behavior: smooth; }
 
 body {
     margin: 0;
+    position: relative;
     background: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-body);
@@ -55,12 +65,42 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Hairline grid + distant neon haze, fixed behind everything. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(70ch 60ch at 12% -8%, rgba(0, 229, 255, 0.16), transparent 65%),
+        radial-gradient(60ch 55ch at 92% 8%, rgba(255, 46, 136, 0.13), transparent 62%),
+        radial-gradient(90ch 60ch at 50% 108%, rgba(0, 229, 255, 0.08), transparent 68%),
+        linear-gradient(rgba(120, 190, 230, 0.05) 1px, transparent 1px) 0 0 / 100% 44px,
+        linear-gradient(90deg, rgba(120, 190, 230, 0.05) 1px, transparent 1px) 0 0 / 44px 100%;
+}
+
+/* CRT scanlines over the top. */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.5;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.16) 0 1px,
+        transparent 1px 3px
+    );
+}
+
 h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: var(--font-heading-weight);
     color: var(--color-heading);
     line-height: 1.12;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.005em;
     margin: 0 0 var(--space-2);
 }
 
@@ -76,8 +116,13 @@ a {
 a:hover { color: var(--color-link-hover); text-decoration: underline; }
 
 :focus { outline: none; }
-:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-::selection { background: rgba(127, 191, 237, 0.3); }
+:focus-visible { outline: 2px solid var(--color-cyan); outline-offset: 2px; box-shadow: var(--glow-cyan); }
+::selection { background: rgba(0, 229, 255, 0.3); color: #ffffff; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #05060a; }
+::-webkit-scrollbar-thumb { background: #17324a; border: 2px solid #05060a; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-cyan); }
 
 /* — layout — */
 .page {
@@ -92,19 +137,29 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
 
 .section-label {
     display: block;
+    font-family: var(--font-mono);
     font-size: 15px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    font-weight: 600;
-    color: var(--color-muted);
+    font-weight: 400;
+    color: var(--color-cyan);
+    text-shadow: var(--text-glow-cyan);
     margin-bottom: var(--space-2);
 }
+.section-label::before { content: "// "; color: var(--color-magenta); text-shadow: none; }
+.section-label::after {
+    content: "_";
+    margin-left: 2px;
+    animation: caret 1.1s steps(1) infinite;
+}
+
+@keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 
 .rule {
     height: 1px;
     border: 0;
     margin: 0 0 var(--space-4);
-    background: var(--color-divider);
+    background: linear-gradient(90deg, var(--color-cyan), rgba(0, 229, 255, 0.15) 32%, var(--color-divider) 60%, transparent);
 }
 .rule-wide { margin-bottom: var(--space-5); }
 
@@ -132,7 +187,7 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
     flex-wrap: wrap;
 }
 
-/* — blueprint frame: square, hairline, with registration marks — */
+/* — blueprint frame: square, hairline, with glowing registration marks — */
 .blueprint {
     position: relative;
     border: 1px solid var(--color-divider);
@@ -142,7 +197,9 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
     position: absolute;
     width: 11px;
     height: 11px;
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--color-cyan);
+    filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.7));
+    transition: color 0.2s ease-in-out;
 }
 .blueprint > .corner::before,
 .blueprint > .corner::after { content: ""; position: absolute; background: currentColor; }
@@ -153,8 +210,9 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
 .blueprint > .corner.bl { bottom: -6px; left: -6px; }
 .blueprint > .corner.br { bottom: -6px; right: -6px; }
 
-/* — buttons: outlined in white, like the old site's nav icons — */
+/* — buttons: neon outlines with a sheen sweep — */
 .btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -162,42 +220,99 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
     cursor: pointer;
     text-decoration: none;
     font-family: var(--font-heading);
-    font-weight: var(--font-heading-weight);
+    font-weight: 600;
     font-size: 17px;
     line-height: 1.2;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--color-heading);
-    background: transparent;
+    background: rgba(0, 229, 255, 0.03);
     border: 1px solid var(--color-divider);
     border-radius: 0;
     padding: var(--space-3) calc(var(--space-4) * 1.2);
-    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out,
+                box-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
 }
+/* Sheen sweeps via background-position, so it stays inside the box and the
+   registration marks outside the border are never clipped. */
+.btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.22) 50%, transparent 58%);
+    background-size: 280% 100%;
+    background-position: 130% 0;
+    transition: background-position 0.55s ease-out;
+    pointer-events: none;
+}
+.btn:hover::after { background-position: -30% 0; }
 .btn:hover { text-decoration: none; color: var(--color-heading); }
-.btn-primary { border-color: var(--color-accent); }
-.btn-primary:hover { background: var(--color-accent-soft); }
-.btn-primary:active { background: rgba(255, 255, 255, 0.35); }
-.btn-secondary:hover { background: var(--color-accent-softer); border-color: var(--color-accent); }
+
+.btn-primary {
+    border-color: var(--color-cyan);
+    color: var(--color-cyan);
+    box-shadow: inset 0 0 12px rgba(0, 229, 255, 0.1);
+    text-shadow: var(--text-glow-cyan);
+}
+.btn-primary:hover {
+    background: var(--color-accent-soft);
+    color: #ffffff;
+    box-shadow: var(--glow-cyan), inset 0 0 14px rgba(0, 229, 255, 0.16);
+}
+.btn-primary:active { background: rgba(0, 229, 255, 0.28); }
+
+.btn-secondary { border-color: rgba(255, 46, 136, 0.45); color: #ffa8c8; }
+.btn-secondary:hover {
+    background: rgba(255, 46, 136, 0.1);
+    border-color: var(--color-magenta);
+    color: #ffffff;
+    box-shadow: var(--glow-magenta);
+}
+.btn-secondary .corner { color: var(--color-magenta); filter: drop-shadow(0 0 4px rgba(255, 46, 136, 0.7)); }
+
 .btn-ghost {
     border-color: transparent;
+    background: transparent;
     color: var(--color-link);
     padding-inline: var(--space-1);
 }
-.btn-ghost:hover { background: var(--color-accent-softer); color: var(--color-link-hover); }
+.btn-ghost:hover { background: var(--color-accent-softer); color: var(--color-link-hover); text-shadow: var(--text-glow-cyan); }
 
 /* — cards — */
 .card {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
     padding: var(--space-5);
-    background: transparent;
+    background:
+        linear-gradient(160deg, rgba(0, 229, 255, 0.05), transparent 48%),
+        var(--color-bg-elev);
     border-radius: 0;
 }
+/* Notched top-right corner: opaque triangle punched out of the frame, with a
+   neon hairline along the cut. */
+.card::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+    background: linear-gradient(
+        225deg,
+        var(--color-bg) 0 calc(50% - 1px),
+        rgba(0, 229, 255, 0.6) calc(50% - 1px) 50%,
+        transparent 50%
+    );
+}
 .card-kicker {
-    font-size: 12px;
-    letter-spacing: 0.1em;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--color-muted);
+    color: var(--color-magenta);
 }
 .card-title {
     font-family: var(--font-heading);
@@ -205,27 +320,42 @@ a:hover { color: var(--color-link-hover); text-decoration: underline; }
     font-size: 21px;
     line-height: 1.2;
     color: var(--color-heading);
+    transition: color 0.2s ease-in-out, text-shadow 0.2s ease-in-out;
 }
-.card-body { margin: 0; font-size: 16px; line-height: 1.55; color: #cccccc; flex: 1; }
+.card-body { margin: 0; font-size: 16px; line-height: 1.55; color: #a9b6c9; flex: 1; }
 .card-meta {
     display: flex;
     align-items: center;
     gap: 6px;
+    font-family: var(--font-mono);
     font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--color-muted);
 }
+.card-meta::before { content: "["; color: var(--color-cyan); }
+.card-meta::after { content: "]"; color: var(--color-cyan); order: 9; }
+
 a.card {
     text-decoration: none;
     color: inherit;
-    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out,
+                transform 0.2s ease-in-out, background-position 0.6s ease-out;
+    background-image:
+        linear-gradient(115deg, transparent 44%, rgba(0, 229, 255, 0.1) 50%, transparent 56%),
+        linear-gradient(160deg, rgba(0, 229, 255, 0.05), transparent 48%);
+    background-size: 280% 100%, auto;
+    background-position: 130% 0, 0 0;
 }
 a.card:hover {
     text-decoration: none;
     color: inherit;
-    border-color: var(--color-accent);
-    background: var(--color-accent-softer);
+    border-color: var(--color-cyan);
+    box-shadow: var(--glow-cyan);
+    transform: translateY(-2px);
+    background-position: -30% 0, 0 0;
 }
-a.card:hover .card-title { color: var(--color-link-hover); }
+a.card:hover .card-title { color: var(--color-link-hover); text-shadow: var(--text-glow-cyan); }
 
 .grid-3 {
     display: grid;
@@ -238,68 +368,173 @@ a.card:hover .card-title { color: var(--color-link-hover); }
 .tag {
     display: inline-flex;
     align-items: center;
+    font-family: var(--font-mono);
     font-size: 13px;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.08em;
     padding: 4px 12px;
     border-radius: 0;
+    border: 1px solid transparent;
 }
-.tag-accent { background: rgba(127, 191, 237, 0.16); color: var(--color-link); }
-.tag-neutral { background: var(--color-accent-softer); color: #e6e6e6; }
-.tag-outline { border: 1px solid var(--color-divider); color: #e6e6e6; }
+.tag-accent {
+    background: rgba(0, 229, 255, 0.1);
+    border-color: rgba(0, 229, 255, 0.4);
+    color: var(--color-cyan);
+    text-shadow: var(--text-glow-cyan);
+}
+.tag-neutral {
+    background: rgba(255, 46, 136, 0.09);
+    border-color: rgba(255, 46, 136, 0.35);
+    color: #ff8ab6;
+}
+.tag-outline { border-color: var(--color-divider); color: #b9c6d8; }
 
 /* — navigation — */
 .nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
     display: flex;
     align-items: center;
     gap: var(--space-4);
     flex-wrap: wrap;
     padding: var(--space-3) var(--page-pad);
+    background: rgba(7, 8, 13, 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--color-divider);
 }
+/* Scanning beam along the nav's lower edge. */
+.nav::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    height: 1px;
+    width: 22%;
+    background: linear-gradient(90deg, transparent, var(--color-cyan), transparent);
+    box-shadow: var(--glow-cyan);
+    animation: beam 6s linear infinite;
+}
+@keyframes beam {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(560%); }
+}
+
 .nav-brand {
     font-family: var(--font-heading);
-    font-weight: var(--font-heading-weight);
+    font-weight: 700;
     font-size: 22px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     margin-right: auto;
     color: var(--color-heading);
+    text-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
 }
-.nav a { color: var(--color-text); text-decoration: none; font-size: 17px; }
-.nav a:hover { color: var(--color-heading); text-decoration: none; }
-.nav a[aria-current] { color: var(--color-heading); }
-.nav a.btn { color: var(--color-heading); }
+.nav a {
+    position: relative;
+    font-family: var(--font-mono);
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.nav a:not(.btn)::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 100%;
+    bottom: -4px;
+    height: 1px;
+    background: var(--color-cyan);
+    box-shadow: var(--glow-cyan);
+    transition: right 0.2s ease-in-out;
+}
+.nav a:not(.btn):hover::after,
+.nav a:not(.btn)[aria-current]::after { right: 0; }
+.nav a:hover { color: var(--color-cyan); text-decoration: none; text-shadow: var(--text-glow-cyan); }
+.nav a[aria-current] { color: var(--color-cyan); }
+.nav a.btn { font-family: var(--font-heading); font-size: 15px; padding: var(--space-2) var(--space-4); }
 
 /* — action rows / social — */
 .actions { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-6); }
-.social { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.social { display: flex; gap: var(--space-4); flex-wrap: wrap; font-family: var(--font-mono); letter-spacing: 0.08em; }
+.social a { text-transform: uppercase; }
+.social a::before { content: "> "; color: var(--color-magenta); }
 
 .site-footer {
     padding: var(--space-6) 0;
-    font-size: 15px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.08em;
     color: var(--color-muted);
     border-top: 1px solid var(--color-divider);
 }
 
 /* — hero — */
 .hero-title {
+    position: relative;
     font-size: clamp(44px, 6.5vw, 88px);
     line-height: 1.04;
     text-transform: uppercase;
     letter-spacing: 0.01em;
     margin: 0;
+    color: var(--color-heading);
+    text-shadow: 0 0 24px rgba(0, 229, 255, 0.35);
 }
+
+/* Chromatic-aberration glitch: needs data-text="…" on the element. */
+.glitch { position: relative; }
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    clip-path: inset(0 0 0 0);
+}
+.glitch::before {
+    color: var(--color-magenta);
+    text-shadow: 2px 0 var(--color-magenta);
+    animation: glitch-a 3.6s steps(2, end) infinite;
+}
+.glitch::after {
+    color: var(--color-cyan);
+    text-shadow: -2px 0 var(--color-cyan);
+    animation: glitch-b 3.6s steps(2, end) infinite;
+}
+@keyframes glitch-a {
+    0%, 88%, 100% { clip-path: inset(100% 0 0 0); transform: none; }
+    89% { clip-path: inset(12% 0 62% 0); transform: translate(-3px, -1px); }
+    92% { clip-path: inset(48% 0 26% 0); transform: translate(3px, 1px); }
+    95% { clip-path: inset(72% 0 8% 0); transform: translate(-2px, 0); }
+}
+@keyframes glitch-b {
+    0%, 88%, 100% { clip-path: inset(100% 0 0 0); transform: none; }
+    90% { clip-path: inset(28% 0 44% 0); transform: translate(3px, 1px); }
+    93% { clip-path: inset(64% 0 18% 0); transform: translate(-3px, -1px); }
+    96% { clip-path: inset(6% 0 78% 0); transform: translate(2px, 0); }
+}
+
 .hero-sub {
-    font-size: 22px;
+    font-family: var(--font-mono);
+    font-size: 20px;
     line-height: 1.5;
+    letter-spacing: 0.06em;
     max-width: 60ch;
     margin: var(--space-4) 0 0;
-    color: var(--color-text);
-    opacity: 0.75;
-    font-weight: 600;
+    color: var(--color-cyan);
+    opacity: 0.85;
+    font-weight: 400;
+    text-shadow: var(--text-glow-cyan);
 }
+
 .page-title {
     font-size: clamp(36px, 5vw, 56px);
     text-transform: uppercase;
     letter-spacing: 0.01em;
     margin: 0;
+    text-shadow: 0 0 22px rgba(0, 229, 255, 0.3);
 }
 
 /* — responsive — */
@@ -313,5 +548,49 @@ a.card:hover .card-title { color: var(--color-link-hover); }
     .nav-brand { flex: 1 0 100%; margin-right: 0; }
     .section-title { font-size: 28px; }
     .prose { font-size: 17px; }
-    .hero-sub { font-size: 19px; }
+    .hero-sub { font-size: 17px; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .glitch::before,
+    .glitch::after,
+    .nav::after,
+    .section-label::after { animation: none; }
+    .glitch::before,
+    .glitch::after { display: none; }
+    .nav::after { display: none; }
+    .section-label::after { opacity: 1; }
+    * { transition-duration: 0.01ms !important; }
+}
+
+/* — anchors clear the sticky nav — */
+[id] { scroll-margin-top: 84px; }
+
+/* — effects switch (button is injected by js/main.js) — */
+.fx-toggle {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-cyan);
+    background: transparent;
+    border: 1px solid var(--color-divider);
+    border-radius: 0;
+    padding: 4px 9px;
+    cursor: pointer;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+.fx-toggle:hover { border-color: var(--color-cyan); box-shadow: var(--glow-cyan); }
+.fx-toggle[aria-pressed="false"] { color: var(--color-muted); }
+
+.nav.is-scrolled {
+    border-bottom-color: rgba(0, 229, 255, 0.45);
+    box-shadow: 0 1px 22px rgba(0, 229, 255, 0.12);
+}
+
+:root[data-fx="off"] body::after,
+:root[data-fx="off"] .nav::after,
+:root[data-fx="off"] .glitch::before,
+:root[data-fx="off"] .glitch::after { display: none; }
+:root[data-fx="off"] .section-label::after { animation: none; opacity: 1; }

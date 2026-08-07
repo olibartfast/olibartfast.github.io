@@ -1,45 +1,24 @@
 {
-    "title": "Freelancer",
-    "name": "startbootstrap-freelancer",
-    "version": "4.1.1",
-    "description": "A freelancer portfolio HTML theme for Bootstrap.",
-    "keywords": [
-        "css",
-        "sass",
-        "html",
-        "responsive",
-        "theme",
-        "template"
-    ],
-    "homepage": "https://startbootstrap.com/template-overviews/freelancer",
-    "bugs": {
-        "url": "https://github.com/BlackrockDigital/startbootstrap-freelancer/issues",
-        "email": "feedback@startbootstrap.com"
-    },
+    "name": "olibartfast-github-io",
+    "version": "2.0.0",
+    "private": true,
+    "description": "Personal site and blog of Francesco Oliva — static HTML/CSS with TypeScript for behaviour.",
+    "homepage": "https://olibartfast.github.io",
     "license": "MIT",
-    "author": "Start Bootstrap",
-    "contributors": [
-        "David Miller (http://davidmiller.io/)"
-    ],
+    "author": "Francesco Oliva",
     "repository": {
         "type": "git",
-        "url": "https://github.com/BlackrockDigital/startbootstrap-freelancer.git"
+        "url": "https://github.com/olibartfast/olibartfast.github.io.git"
     },
-    "dependencies": {
-        "bootstrap": "4.1.1",
-        "font-awesome": "5.15.4",
-        "jquery": "3.5.0",
-        "jquery.easing": "^1.4.1",
-        "magnific-popup": "^1.1.0"
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc --watch",
+        "typecheck": "tsc --noEmit",
+        "serve": "python3 -m http.server 8080",
+        "test": "npm run typecheck"
     },
     "devDependencies": {
-        "browser-sync": "2.24.3",
-        "gulp": "^3.9.1",
-        "gulp-clean-css": "3.9.4",
-        "gulp-filter": "5.1.0",
-        "gulp-header": "2.0.5",
-        "gulp-rename": "^1.2.2",
-        "gulp-sass": "4.0.1",
-        "gulp-uglify": "3.0.0"
+        "typescript": "^5.9.3"
     }
 }

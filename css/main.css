@@ -1,5 +1,18 @@
 @import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,900");
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Share+Tech+Mono&display=swap");
 @import url("https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css");
+
+/* Cyberpunk palette, shared with css/site.css */
+:root {
+    --color-bg: #07080d;
+    --color-cyan: #00e5ff;
+    --color-magenta: #ff2e88;
+    --color-divider: #1d2a3d;
+    --font-display: "Chakra Petch", "Source Sans Pro", sans-serif;
+    --font-mono: "Share Tech Mono", ui-monospace, Consolas, monospace;
+    --glow-cyan: 0 0 10px rgba(0, 229, 255, 0.45), 0 0 26px rgba(0, 229, 255, 0.16);
+    --text-glow-cyan: 0 0 12px rgba(0, 229, 255, 0.55);
+}
 
 /* Reset */
 
@@ -43,9 +56,36 @@ body {
     font-weight: 300;
     letter-spacing: -0.025em;
     line-height: 1.75em;
-    background: #302e2f;
+    background: var(--color-bg);
     overflow: hidden;
 }
+
+/* Hairline grid + neon haze behind the content. */
+body:before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(70ch 60ch at 10% -10%, rgba(0, 229, 255, 0.15), transparent 65%),
+        radial-gradient(60ch 55ch at 95% 5%, rgba(255, 46, 136, 0.12), transparent 62%),
+        linear-gradient(rgba(120, 190, 230, 0.045) 1px, transparent 1px) 0 0 / 100% 44px,
+        linear-gradient(90deg, rgba(120, 190, 230, 0.045) 1px, transparent 1px) 0 0 / 44px 100%;
+}
+
+/* CRT scanlines. */
+body:after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.5;
+    background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+}
+
+::selection { background: rgba(0, 229, 255, 0.3); color: #fff; }
 
 a {
     -moz-transition: border-color 0.2s ease-in-out;
@@ -434,7 +474,7 @@ a:hover {
 /* Apply to body tag on blog pages */
 body.blog-page {
     /* Ensure the dark background is applied */
-    background: #302e2f;
+    background: var(--color-bg);
     /* Body remains overflow: hidden */
   }
   
@@ -449,7 +489,7 @@ body.blog-page {
 /* Apply to body tag on blog pages */
 body.blog-page {
     /* Ensure the dark background is applied */
-    background: #302e2f;
+    background: var(--color-bg);
     /* Body remains overflow: hidden */
   }
   
@@ -689,3 +729,283 @@ body.blog-page {
           font-size: 1.3em;
       }
   }  
+
+/* ==========================================================================
+   Cyberpunk pass for article pages.
+   Scoped under .blog-scrollable-content so it outranks the per-post inline
+   <style> blocks (which still carry the old grey/bootstrap-blue palette).
+   ========================================================================== */
+
+.blog-scrollable-content {
+    color: #c4cfe0;
+}
+
+/* — display type — */
+.blog-scrollable-content h1,
+.blog-scrollable-content h2,
+.blog-scrollable-content h3,
+.blog-scrollable-content h4,
+.blog-scrollable-content h5,
+.blog-scrollable-content h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #ecf5ff;
+}
+.blog-scrollable-content h1 {
+    text-transform: uppercase;
+    border-bottom: 0;
+    padding-bottom: 0.35em;
+    position: relative;
+    text-shadow: 0 0 22px rgba(0, 229, 255, 0.32);
+}
+.blog-scrollable-content h1::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, var(--color-cyan), rgba(0, 229, 255, 0.15) 32%, var(--color-divider) 60%, transparent);
+    box-shadow: var(--glow-cyan);
+}
+/* Neon marker bar sits on a pseudo-element so its glow doesn't halo the whole
+   heading box. */
+.blog-scrollable-content h2 {
+    position: relative;
+    padding-left: 0.6em;
+    border-left: 0;
+    text-transform: uppercase;
+}
+.blog-scrollable-content h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.12em;
+    bottom: 0.12em;
+    width: 3px;
+    background: var(--color-cyan);
+    box-shadow: var(--glow-cyan);
+}
+.blog-scrollable-content h3 {
+    font-weight: 500;
+    color: var(--color-cyan);
+    text-shadow: var(--text-glow-cyan);
+}
+.blog-scrollable-content h4 { color: #ff8ab6; }
+
+.blog-scrollable-content .post-meta,
+.blog-scrollable-content .blog-list .post-meta {
+    font-family: var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-magenta);
+}
+.blog-scrollable-content .post-meta::before { content: '// '; color: var(--color-cyan); }
+
+.blog-scrollable-content hr {
+    background: linear-gradient(90deg, var(--color-cyan), rgba(0, 229, 255, 0.12) 30%, transparent 70%);
+}
+
+.blog-scrollable-content p,
+.blog-scrollable-content li { color: #b6c3d5; }
+
+.blog-scrollable-content strong { color: #ecf5ff; }
+
+.blog-scrollable-content a,
+.blog-scrollable-content .toc a,
+.blog-scrollable-content .table-of-contents a,
+.blog-scrollable-content .references-list a {
+    color: #4fe3ff;
+    border-bottom: dotted 1px rgba(0, 229, 255, 0.4);
+    transition: color 0.2s ease-in-out, text-shadow 0.2s ease-in-out;
+}
+.blog-scrollable-content a:hover,
+.blog-scrollable-content .toc a:hover,
+.blog-scrollable-content .table-of-contents a:hover,
+.blog-scrollable-content .references-list a:hover {
+    color: #9df3ff;
+    border-color: transparent;
+    text-shadow: var(--text-glow-cyan);
+}
+
+/* — code — */
+.blog-scrollable-content code {
+    font-family: var(--font-mono);
+    background-color: rgba(0, 229, 255, 0.09);
+    border: 1px solid rgba(0, 229, 255, 0.22);
+    border-radius: 0;
+    color: #9df3ff;
+}
+.blog-scrollable-content pre,
+.blog-scrollable-content pre[class*="language-"] {
+    background: #0a0e16;
+    border: 1px solid rgba(0, 229, 255, 0.28) !important;
+    border-radius: 0 !important;
+    box-shadow: inset 0 0 22px rgba(0, 229, 255, 0.07);
+}
+.blog-scrollable-content pre code,
+.blog-scrollable-content pre[class*="language-"] code {
+    border: 0;
+    background: transparent !important;
+}
+
+/* Per-post snippet boxes, all previously grey with a white hairline. */
+.blog-scrollable-content .code-snippet,
+.blog-scrollable-content .cuda-snippet,
+.blog-scrollable-content .cmake-snippet,
+.blog-scrollable-content .cpp-snippet,
+.blog-scrollable-content .ninja-snippet,
+.blog-scrollable-content .architecture-diagram {
+    background: #0a0e16;
+    border: 1px solid rgba(0, 229, 255, 0.28);
+    border-radius: 0;
+    box-shadow: inset 0 0 22px rgba(0, 229, 255, 0.07);
+    font-family: var(--font-mono);
+}
+.blog-scrollable-content .code-snippet code,
+.blog-scrollable-content .cuda-snippet code,
+.blog-scrollable-content .cmake-snippet code,
+.blog-scrollable-content .cpp-snippet code,
+.blog-scrollable-content .ninja-snippet code {
+    background: transparent;
+    border: 0;
+    color: #d7e6f5;
+}
+
+/* Terminal-style command blocks: green phosphor on black. */
+.blog-scrollable-content .command-example {
+    background: #05070c;
+    border: 1px solid rgba(0, 255, 163, 0.35);
+    border-radius: 0;
+    color: #4dffb0;
+    font-family: var(--font-mono);
+    text-shadow: 0 0 10px rgba(0, 255, 163, 0.45);
+}
+
+/* — panels / callouts — */
+.blog-scrollable-content .tips-box,
+.blog-scrollable-content .note-box,
+.blog-scrollable-content .table-of-contents,
+.blog-scrollable-content .toc,
+.blog-scrollable-content .references-list,
+.blog-scrollable-content .family-section,
+.blog-scrollable-content .deployment-notes {
+    background: linear-gradient(160deg, rgba(0, 229, 255, 0.05), transparent 48%), rgba(13, 18, 28, 0.72);
+    border: 1px solid var(--color-divider);
+    border-radius: 0;
+    color: #c4cfe0;
+}
+.blog-scrollable-content .table-of-contents h3,
+.blog-scrollable-content .toc h3,
+.blog-scrollable-content .note-box h3,
+.blog-scrollable-content .tips-box h3 {
+    color: var(--color-cyan);
+    text-shadow: var(--text-glow-cyan);
+}
+
+/* Left-accented boxes: cyan for positives, magenta for warnings. */
+.blog-scrollable-content .comparison-box,
+.blog-scrollable-content .advantages-list,
+.blog-scrollable-content .quick-selection,
+.blog-scrollable-content .strengths,
+.blog-scrollable-content .weaknesses,
+.blog-scrollable-content .evolution-timeline,
+.blog-scrollable-content .checklist {
+    background: rgba(13, 18, 28, 0.72);
+    border-radius: 0;
+    color: #c4cfe0;
+}
+.blog-scrollable-content .comparison-box,
+.blog-scrollable-content .advantages-list,
+.blog-scrollable-content .quick-selection,
+.blog-scrollable-content .strengths {
+    border-left: 3px solid var(--color-cyan);
+    box-shadow: -1px 0 14px rgba(0, 229, 255, 0.22);
+}
+.blog-scrollable-content .weaknesses {
+    border-left: 3px solid var(--color-magenta);
+    box-shadow: -1px 0 14px rgba(255, 46, 136, 0.22);
+}
+.blog-scrollable-content .evolution-timeline {
+    border: 1px solid var(--color-divider);
+    border-left: 3px solid var(--color-magenta);
+}
+.blog-scrollable-content .checklist li:before { color: var(--color-cyan); }
+
+/* — tables — */
+.blog-scrollable-content table,
+.blog-scrollable-content .architecture-table,
+.blog-scrollable-content .pattern-table {
+    background: rgba(13, 18, 28, 0.72);
+    border: 1px solid var(--color-divider);
+    border-radius: 0;
+    color: #c4cfe0;
+    overflow: visible;
+}
+.blog-scrollable-content th,
+.blog-scrollable-content td,
+.blog-scrollable-content .architecture-table th,
+.blog-scrollable-content .architecture-table td,
+.blog-scrollable-content .pattern-table th,
+.blog-scrollable-content .pattern-table td {
+    border: 1px solid var(--color-divider);
+    background: transparent;
+    color: #c4cfe0;
+}
+.blog-scrollable-content th,
+.blog-scrollable-content .architecture-table th,
+.blog-scrollable-content .pattern-table th {
+    background: rgba(0, 229, 255, 0.1);
+    color: var(--color-cyan);
+    font-family: var(--font-mono);
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: var(--text-glow-cyan);
+}
+.blog-scrollable-content tr:hover td,
+.blog-scrollable-content .architecture-table tr:hover,
+.blog-scrollable-content .architecture-table tr:hover td {
+    background: rgba(0, 229, 255, 0.06);
+}
+
+/* — chrome — */
+.blog-scrollable-content::-webkit-scrollbar-track { background: #05060a; }
+.blog-scrollable-content::-webkit-scrollbar-thumb { background: #17324a; border-radius: 0; }
+.blog-scrollable-content::-webkit-scrollbar-thumb:hover { background: var(--color-cyan); }
+
+.blog-back-button {
+    color: var(--color-cyan);
+    opacity: 0.8;
+    text-shadow: var(--text-glow-cyan);
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+.blog-back-button:hover { opacity: 1; transform: translateX(-3px); }
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation: none !important; }
+}
+
+/* — effects switch on article pages (button is injected by js/main.js) — */
+.blog-view-wrapper .fx-toggle {
+    position: absolute;
+    top: 14px;
+    right: 22px;
+    z-index: 11;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-cyan);
+    background: transparent;
+    border: 1px solid var(--color-divider);
+    border-radius: 0;
+    padding: 4px 9px;
+    cursor: pointer;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+.blog-view-wrapper .fx-toggle:hover { border-color: var(--color-cyan); box-shadow: var(--glow-cyan); }
+.blog-view-wrapper .fx-toggle[aria-pressed="false"] { color: #6d7d96; }
+
+:root[data-fx="off"] body:after { display: none; }

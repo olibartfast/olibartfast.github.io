@@ -1,11 +1,11 @@
 sudo:          false
 language:      node_js
 node_js:
-  - "node"
-install:       npm install
+  - "lts/*"
+install:       npm ci
 script:
-  - npm test
-  - gulp
+  - npm run typecheck
+  - npm run build
 cache:
   directories:
     - node_modules
