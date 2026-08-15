@@ -1,0 +1,578 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>AI Spec-Driven Development: A Practical Workflow for Coding Agents - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="A practical, agent-agnostic workflow for AI spec-driven development: project constitutions, feature specs, implementation, validation, replanning, and reusable automation."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .code-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        code {
+            font-size: 1.05rem;
+        }
+
+        .table-of-contents,
+        .note-box,
+        .warning-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents h3,
+        .note-box h3,
+        .warning-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .table-of-contents li {
+            margin: 8px 0;
+        }
+
+        .table-of-contents a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .table-of-contents a:hover {
+            color: #007bff;
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 1rem;
+        }
+
+        /* Layout only — border and palette come from the cyberpunk table pass
+           in main.css, which already styles .blog-scrollable-content th/td. */
+        .workflow-table th,
+        .workflow-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .workflow-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin: 24px 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+
+        .workflow-flow span {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            color: #c4cfe0;
+            padding: 8px 12px;
+        }
+
+        .workflow-flow b {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+
+        .blog-scrollable-content .warning-box {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            border-left: 3px solid #ff2e88;
+            border-radius: 0;
+            box-shadow: -1px 0 14px rgba(255, 46, 136, 0.22);
+            color: #c4cfe0;
+        }
+
+        /* main.css recolours .note-box/.tips-box headings but not .warning-box,
+           which no other post uses. Match them here. */
+        .blog-scrollable-content .warning-box h3 {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>AI Spec-Driven Development</h1>
+            <p class="post-meta">A practical workflow for coding agents</p>
+            <p class="post-meta">Posted on August 15, 2026</p>
+            <p class="post-meta">Read time: 12 mins | Tags: AI, Coding Agents, Software Engineering, Developer Workflow</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>AI coding agents can produce code faster than most teams can review it. That is useful, but it also exposes a less glamorous bottleneck: the agent often does not know which product to build, which constraints are permanent, which decisions are still open, or what evidence will make the work mergeable.</p>
+
+                <p>A long prompt is not enough. It disappears into chat history, mixes durable rules with temporary requests, and leaves the next developer—or the next agent—to reconstruct intent from a diff.</p>
+
+                <p><strong>Spec-driven development (SDD)</strong> gives that intent a durable home. The project keeps a small set of versioned documents for its mission and technical boundaries, then creates a focused specification for each feature before implementation begins. The agent still writes code, but it works inside a visible contract that humans can review and amend.</p>
+
+                <p>This article presents an agent-agnostic workflow inspired by DeepLearning.AI's <a href="https://www.deeplearning.ai/courses/spec-driven-development-with-coding-agents">Spec-Driven Development with Coding Agents</a> short course and its <a href="https://github.com/https-deeplearning-ai/sc-spec-driven-development-files">open companion repository</a>. The examples and recommendations below are a practical synthesis rather than a reproduction of the course project.</p>
+
+                <div class="note-box">
+                    <h3>The core idea</h3>
+                    <p>Move the important conversation out of an ephemeral prompt and into version-controlled artifacts: why the project exists, what the feature must do, how it will be built, and how everyone will know it is done.</p>
+                </div>
+
+                <div class="table-of-contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#what-sdd-is">1. What Spec-Driven Development Is</a></li>
+                        <li><a href="#spec-architecture">2. A Small, Durable Spec Architecture</a></li>
+                        <li><a href="#workflow">3. The End-to-End Workflow</a></li>
+                        <li><a href="#living-specs">4. Keep Specifications and Code in Sync</a></li>
+                        <li><a href="#brownfield">5. Bringing SDD to an Existing Codebase</a></li>
+                        <li><a href="#automation">6. Turn Repetition into Reusable Agent Skills</a></li>
+                        <li><a href="#failure-modes">7. Common Failure Modes</a></li>
+                        <li><a href="#starter-kit">8. A Minimal Starter Kit</a></li>
+                        <li><a href="#conclusion">Conclusion</a></li>
+                    </ul>
+                </div>
+
+                <section id="what-sdd-is" class="blog-section">
+                    <h2>1. What Spec-Driven Development Is</h2>
+
+                    <p>Spec-driven development is a feedback loop in which human intent is captured as repository artifacts before an agent changes the product. Those artifacts guide implementation, validation feeds discoveries back into them, and the final merge leaves both code and intent in a coherent state.</p>
+
+                    <div class="workflow-flow" aria-label="Spec-driven development workflow">
+                        <span>Constitution</span><b>→</b>
+                        <span>Feature spec</span><b>→</b>
+                        <span>Implement</span><b>→</b>
+                        <span>Validate</span><b>→</b>
+                        <span>Integrate</span><b>→</b>
+                        <span>Replan</span>
+                    </div>
+
+                    <p>This is not an attempt to predict the entire system upfront. Good SDD deliberately uses small phases. A feature spec should be detailed enough to remove consequential ambiguity and small enough to revise without ceremony.</p>
+
+                    <p>It also does not mean that the specification writes the software automatically. The spec improves the agent's context and makes its choices inspectable; engineering judgment is still required for architecture, security, performance, usability, and review.</p>
+
+                    <h3>Why it fits coding agents</h3>
+
+                    <p>An experienced teammate accumulates unwritten context over months. An agent session may start with none of it. Repository-level specifications act as shared, persistent memory:</p>
+
+                    <ul>
+                        <li>Humans can review product intent before paying the cost of implementation.</li>
+                        <li>Agents can discover constraints without relying on one giant prompt.</li>
+                        <li>Validation is agreed in advance instead of improvised after the code looks finished.</li>
+                        <li>A fresh agent can continue the work from files and Git history.</li>
+                        <li>Changes to scope become visible changes to the spec, not silent prompt drift.</li>
+                    </ul>
+
+                    <p>The result is not perfect autonomy. It is better alignment, cheaper correction, and a much clearer audit trail.</p>
+                </section>
+
+                <section id="spec-architecture" class="blog-section">
+                    <h2>2. A Small, Durable Spec Architecture</h2>
+
+                    <p>The workflow starts with two levels of documentation: a stable project constitution and a temporary-but-versioned packet for each feature.</p>
+
+                    <pre class="code-snippet"><code>specs/
+├── mission.md
+├── tech-stack.md
+├── roadmap.md
+└── 2026-08-15-feature-name/
+    ├── requirements.md
+    ├── plan.md
+    └── validation.md</code></pre>
+
+                    <h3>The project constitution</h3>
+
+                    <p>The constitution records decisions that should influence many features. It should be short enough that an agent can read it at the start of every planning task.</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Question it answers</th>
+                                <th>Typical contents</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>mission.md</code></td>
+                                <td>Why does this product exist, and for whom?</td>
+                                <td>Problem, audience, product promise, success criteria, tone</td>
+                            </tr>
+                            <tr>
+                                <td><code>tech-stack.md</code></td>
+                                <td>What technical boundaries should every feature respect?</td>
+                                <td>Languages, frameworks, data store, tests, tooling, explicit non-choices</td>
+                            </tr>
+                            <tr>
+                                <td><code>roadmap.md</code></td>
+                                <td>What is the smallest sensible delivery order?</td>
+                                <td>Short, independently reviewable phases with visible status</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Explicit non-choices matter. “No ORM in the first release” or “do not add a client-side framework” prevents an agent from expanding the architecture simply because a familiar dependency would make one task convenient.</p>
+
+                    <h3>The feature packet</h3>
+
+                    <p>Each roadmap phase gets its own directory. Separating the three documents keeps three different conversations from collapsing into one:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Purpose</th>
+                                <th>What belongs there</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>requirements.md</code></td>
+                                <td>Define the contract</td>
+                                <td>In scope, out of scope, user-visible behavior, decisions, constraints, context</td>
+                            </tr>
+                            <tr>
+                                <td><code>plan.md</code></td>
+                                <td>Sequence the work</td>
+                                <td>Numbered task groups that are independently implementable and verifiable</td>
+                            </tr>
+                            <tr>
+                                <td><code>validation.md</code></td>
+                                <td>Define the evidence</td>
+                                <td>Automated checks, manual walkthroughs, edge cases, and merge criteria</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>A useful shorthand is: <strong>requirements describe what, the plan describes how, and validation describes proof.</strong></p>
+                </section>
+
+                <section id="workflow" class="blog-section">
+                    <h2>3. The End-to-End Workflow</h2>
+
+                    <h3>Stage 1: Interview before writing the constitution</h3>
+
+                    <p>Begin with the available stakeholder material: a README, product brief, issue list, meeting notes, or an existing application. Ask targeted questions before writing files. The most valuable questions cluster around three areas:</p>
+
+                    <ol>
+                        <li><strong>Mission:</strong> Who is the product for, which problem matters most, and what does success look like?</li>
+                        <li><strong>Technical boundaries:</strong> Which choices are fixed, which are preferences, and which remain open?</li>
+                        <li><strong>Delivery order:</strong> What is the first end-to-end slice that proves the stack and provides value?</li>
+                    </ol>
+
+                    <p>The interview step is a guardrail against confident invention. If an unanswered question could materially change the feature, the agent should surface it before committing the assumption to code.</p>
+
+                    <p>The roadmap should then decompose the product into thin, shippable phases. “Build the dashboard” is usually too broad. “Render the shared shell,” “show a read-only list,” and “add the first editable workflow” create clearer review and validation points.</p>
+
+                    <h3>Stage 2: Select one roadmap phase and isolate it</h3>
+
+                    <p>Choose the next incomplete phase, create a branch, and give the specification a dated directory. The date makes parallel or repeated efforts distinguishable; the feature name makes the history searchable.</p>
+
+                    <pre class="code-snippet"><code>git switch -c phase-2-agent-list
+mkdir -p specs/2026-08-15-agent-list</code></pre>
+
+                    <p>The branch boundary is important. It lets the feature's spec and code evolve together, and it gives reviewers one coherent unit to compare against the roadmap.</p>
+
+                    <h3>Stage 3: Resolve scope, decisions, and context</h3>
+
+                    <p>Before drafting the feature packet, conduct a smaller feature interview:</p>
+
+                    <ul>
+                        <li><strong>Scope:</strong> What data enters and leaves the feature? Which behaviors and states are included? What is explicitly deferred?</li>
+                        <li><strong>Decisions:</strong> Which storage, API, validation, navigation, and UX choices need to be fixed now?</li>
+                        <li><strong>Context:</strong> Which existing patterns, tone rules, compatibility needs, or operational constraints shape the work?</li>
+                    </ul>
+
+                    <p>Grouped questions are efficient because the human can resolve product and engineering ambiguity in one pass. The agent should then cross-check the answers against <code>mission.md</code> and <code>tech-stack.md</code>.</p>
+
+                    <h3>Stage 4: Write the three-part feature contract</h3>
+
+                    <p>Write the requirements first. Separate in-scope behavior from out-of-scope work so “helpful” expansion is easy to detect. Record important decisions with their rationale, especially when the obvious implementation would violate the constitution.</p>
+
+                    <p>Next, turn the requirements into numbered task groups. Good groups follow dependency order and end in something observable:</p>
+
+                    <pre class="code-snippet"><code>## Group 1 — Data
+1. Add the migration.
+2. Add typed queries.
+3. Seed representative records.
+
+## Group 2 — Presentation
+4. Add the list component.
+5. Cover empty and populated states.
+
+## Group 3 — Route and navigation
+6. Add the route.
+7. Link it from the shared navigation.
+
+## Group 4 — Verification
+8. Add focused tests.
+9. Run the repository's full validation commands.</code></pre>
+
+                    <p>Finally, write validation as observable evidence. Include exact commands where possible, expected user-visible behavior, failure cases, accessibility or tone checks, and the conditions required for merge.</p>
+
+                    <div class="note-box">
+                        <h3>Write validation before implementation</h3>
+                        <p>If success is defined only after the agent has produced a solution, the criteria tend to fit whatever was built. Defining proof first keeps the implementation accountable to the requirement.</p>
+                    </div>
+
+                    <h3>Stage 5: Implement in task groups</h3>
+
+                    <p>The agent can now execute a bounded plan rather than infer the entire feature from scratch. Work through one task group at a time, run the closest relevant checks, and inspect the diff before moving forward.</p>
+
+                    <p>This makes failures easier to localize. It also creates natural pause points for human review. For higher-risk work, commit by task group; for smaller features, keep the branch uncommitted until the full validation pass.</p>
+
+                    <p>The plan is a guide, not a substitute for repository discovery. The agent must still inspect existing conventions, reuse established components, protect unrelated user changes, and avoid dependencies that the constitution does not authorize.</p>
+
+                    <h3>Stage 6: Validate against the declared evidence</h3>
+
+                    <p>Validation should be executed from <code>validation.md</code>, not summarized from memory. A practical validation ladder is:</p>
+
+                    <ol>
+                        <li>Static checks: formatting, linting, types, schema validation.</li>
+                        <li>Focused tests for the changed behavior.</li>
+                        <li>The full regression suite.</li>
+                        <li>Build or packaging checks.</li>
+                        <li>Manual walkthroughs for user-visible behavior and edge cases.</li>
+                        <li>Diff review against every requirement and out-of-scope boundary.</li>
+                    </ol>
+
+                    <p>Record deviations honestly. “Tests pass” is not equivalent to “validation is complete” if the specification also requires a keyboard-only walkthrough or a real database migration.</p>
+
+                    <h3>Stage 7: Integrate, update, and replan</h3>
+
+                    <p>Once validation passes, update the roadmap, changelog, and any durable technical guidance discovered during the feature. Merge the branch only when the code and specifications tell the same story.</p>
+
+                    <p>Then reconsider the roadmap. Delivered work often changes what should come next. Several tiny phases may now belong together; a newly discovered dependency may need an earlier spike; an MVP may be closer than the original sequence suggested.</p>
+
+                    <p>Replanning is part of the workflow, not an admission that the first plan failed. The project constitution provides continuity while the roadmap adapts to evidence.</p>
+                </section>
+
+                <section id="living-specs" class="blog-section">
+                    <h2>4. Keep Specifications and Code in Sync</h2>
+
+                    <p>The most important operational rule is simple: <strong>when the requirement changes, update the spec in the same branch as the code.</strong></p>
+
+                    <p>Suppose implementation reveals that a shared layout must be split into separate header, main, and footer components. There are three possible reactions:</p>
+
+                    <ul>
+                        <li>Change only the code. The spec immediately becomes misleading.</li>
+                        <li>Refuse the discovery because the plan did not predict it. The spec becomes bureaucracy.</li>
+                        <li>Review the change, update requirements and plan, adjust validation, then implement it. The spec remains useful.</li>
+                    </ul>
+
+                    <p>The third option is living specification. The documents are authoritative enough to guide work but editable enough to incorporate what the team learns.</p>
+
+                    <h3>Global decisions must propagate</h3>
+
+                    <p>Some discoveries belong in one feature; others change the whole project. Adding responsive design or adopting a test framework, for example, should update <code>tech-stack.md</code>, relevant feature specs, current code, and validation—not just the latest prompt.</p>
+
+                    <p>This propagation prevents a common form of drift where the newest feature follows one rule while older specs continue teaching agents another.</p>
+
+                    <h3>Specs are an interface between humans and agents</h3>
+
+                    <p>A good spec does not depend on one model's conversational memory. Another agent should be able to read the repository, understand the current contract, run the checks, and continue the work. That replaceability is a useful test of documentation quality: if changing agents destroys the workflow, critical context probably lives outside the repository.</p>
+                </section>
+
+                <section id="brownfield" class="blog-section">
+                    <h2>5. Bringing SDD to an Existing Codebase</h2>
+
+                    <p>SDD does not require a greenfield project. For a brownfield system, the first task is reconstruction rather than invention.</p>
+
+                    <ol>
+                        <li>Read the README, issue tracker, TODO files, package manifests, build configuration, tests, and recent history.</li>
+                        <li>Infer the current mission and stack, but label assumptions and interview maintainers about the gaps.</li>
+                        <li>Write a roadmap from unfinished work rather than pretending the existing product starts at phase one.</li>
+                        <li>Create feature packets only for new or actively changing work.</li>
+                        <li>Use tests and current behavior as evidence when documentation and implementation disagree.</li>
+                    </ol>
+
+                    <p>Do not attempt to specify the entire legacy system in one pass. Capture stable boundaries, then improve the constitution as features expose missing context. This keeps adoption proportional to the work being done.</p>
+
+                    <div class="warning-box">
+                        <h3>Brownfield caution</h3>
+                        <p>An agent can summarize a codebase convincingly while misunderstanding an important operational constraint. Treat reconstructed documentation as a draft until maintainers and executable checks confirm it.</p>
+                    </div>
+                </section>
+
+                <section id="automation" class="blog-section">
+                    <h2>6. Turn Repetition into Reusable Agent Skills</h2>
+
+                    <p>Once a team repeats the workflow, the repeated procedure should become automation. The source course materials demonstrate this with reusable agent skills for feature specification and changelog generation.</p>
+
+                    <p>A feature-spec skill can encode the mechanical parts:</p>
+
+                    <ul>
+                        <li>Find the next incomplete roadmap phase.</li>
+                        <li>Create a correctly named branch.</li>
+                        <li>Ask the scope, decisions, and context questions before writing.</li>
+                        <li>Read the constitution.</li>
+                        <li>Create the dated directory and three required documents.</li>
+                        <li>Enforce rules such as “no new dependency without approval.”</li>
+                    </ul>
+
+                    <p>A changelog skill can inspect work since the previous merge and update a consistent project history. Similar skills can encode release checks, dependency reviews, database migration procedures, or documentation updates.</p>
+
+                    <p>The right automation target is the <em>procedure</em>, not the product decision. A skill should remember how to interview and structure a spec; it should not silently decide what a user wants.</p>
+
+                    <h3>Keep the workflow portable</h3>
+
+                    <p>Prefer ordinary Markdown, repository scripts, and standard Git operations as the durable layer. Tool-specific commands can be convenient adapters, but the core artifacts should remain usable by a different coding agent—or by a human with no agent at all.</p>
+                </section>
+
+                <section id="failure-modes" class="blog-section">
+                    <h2>7. Common Failure Modes</h2>
+
+                    <h3>The giant prompt</h3>
+                    <p>A single prompt mixes mission, architecture, feature scope, and validation. It is difficult to review, easy to truncate, and almost impossible to maintain. Split durable context by responsibility.</p>
+
+                    <h3>Specification theater</h3>
+                    <p>The repository contains polished documents, but implementation never reads them and review never checks them. Make the spec operational: point the agent to it, derive tasks from it, and validate against it.</p>
+
+                    <h3>Over-specifying implementation</h3>
+                    <p>A plan that dictates every function name before discovery can lock in weak assumptions. Specify behavior and consequential architecture; let routine implementation details follow repository conventions.</p>
+
+                    <h3>Validation written after the fact</h3>
+                    <p>Post-hoc success criteria tend to bless the existing solution. Write the observable contract first, then adjust it explicitly if a legitimate discovery changes the requirement.</p>
+
+                    <h3>Silent assumptions</h3>
+                    <p>An agent fills product gaps with plausible defaults. Some defaults are harmless; others change data retention, security, compatibility, or user experience. Use the feature interview to expose high-impact assumptions.</p>
+
+                    <h3>Specs that never change</h3>
+                    <p>Frozen specs drift away from reality. Update requirements, plan, and validation with the implementation whenever the team's understanding changes.</p>
+
+                    <h3>Specs for microscopic changes</h3>
+                    <p>Not every typo needs three files. Use the full workflow when ambiguity, risk, handoff cost, or multi-step implementation justifies it. A short issue plus a test can be enough for a trivial fix.</p>
+                </section>
+
+                <section id="starter-kit" class="blog-section">
+                    <h2>8. A Minimal Starter Kit</h2>
+
+                    <p>You can adopt the workflow without installing a framework. Add the three constitution files, choose one modest roadmap phase, and use the following compact feature templates.</p>
+
+                    <h3><code>requirements.md</code></h3>
+
+                    <pre class="code-snippet"><code># Feature Requirements
+
+## Goal
+What user or system outcome does this feature create?
+
+## In Scope
+- Observable behavior included in this branch
+
+## Out of Scope
+- Related work deliberately deferred
+
+## Decisions
+- Important choice and its rationale
+
+## Constraints and Context
+- Constitution rules and existing patterns that apply</code></pre>
+
+                    <h3><code>plan.md</code></h3>
+
+                    <pre class="code-snippet"><code># Feature Plan
+
+## Group 1 — Foundation
+1. First independently verifiable task
+2. Second task
+
+## Group 2 — Behavior
+3. Implement the user-visible slice
+
+## Group 3 — Verification
+4. Add or update tests
+5. Run the declared validation commands</code></pre>
+
+                    <h3><code>validation.md</code></h3>
+
+                    <pre class="code-snippet"><code># Feature Validation
+
+## Automated
+- [ ] Typecheck/lint command exits successfully
+- [ ] Focused tests cover success and failure paths
+- [ ] Full regression suite passes
+- [ ] Production build succeeds
+
+## Manual
+- [ ] Primary workflow behaves as specified
+- [ ] Empty, invalid, and failure states are usable
+- [ ] Accessibility and responsive behavior are checked
+
+## Definition of Done
+- [ ] Every requirement is implemented or explicitly deferred
+- [ ] Spec, code, roadmap, and changelog agree</code></pre>
+
+                    <h3>Practical operating checklist</h3>
+
+                    <ul>
+                        <li>Keep the constitution concise and read it before feature planning.</li>
+                        <li>Make roadmap phases independently reviewable and testable.</li>
+                        <li>Interview for scope, decisions, and context before writing the feature spec.</li>
+                        <li>State what is out of scope.</li>
+                        <li>Define validation before implementation.</li>
+                        <li>Update specifications when discoveries change the design.</li>
+                        <li>Run the checks; do not merely describe them.</li>
+                        <li>Merge spec and code as one coherent change.</li>
+                        <li>Automate repeated workflow steps without automating product judgment.</li>
+                    </ul>
+                </section>
+
+                <section id="conclusion" class="blog-section">
+                    <h2>Conclusion</h2>
+
+                    <p>AI-assisted development becomes more reliable when the agent is not asked to infer the product from a transient conversation. A small project constitution supplies durable direction. A three-part feature packet turns one roadmap phase into an explicit contract. Predeclared validation makes completion measurable. Living updates keep the contract useful as implementation teaches the team something new.</p>
+
+                    <p>The deeper benefit is continuity. The codebase becomes less dependent on one prompt, one developer's memory, or one agent. Intent, decisions, work, and evidence travel together through Git.</p>
+
+                    <p>Start small: write the mission, technical boundaries, and next shippable phase. Specify one feature, validate it honestly, and refine the workflow from what you learn. That is enough to turn an AI coding session into an engineering process.</p>
+
+                    <div class="note-box">
+                        <h3>Source and further exploration</h3>
+                        <p>The workflow in this article was inspired by <a href="https://www.deeplearning.ai/courses/spec-driven-development-with-coding-agents">Spec-Driven Development with Coding Agents</a>, a short course from DeepLearning.AI and JetBrains taught by Paul Everitt, and by the course's <a href="https://github.com/https-deeplearning-ai/sc-spec-driven-development-files">open companion materials</a>. Together, they walk through the project constitution, the plan–implement–validate cycle, legacy adoption, and packaging the workflow into reusable agent skills.</p>
+                    </div>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
