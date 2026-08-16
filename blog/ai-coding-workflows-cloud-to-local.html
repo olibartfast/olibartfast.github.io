@@ -1,0 +1,862 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>AI Coding Workflows: From Cloud to Local - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Designing an AI coding workflow in which the model, provider, execution location, and worker roles can change without changing the engineering contract — with measurements on what delegation actually costs."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .code-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        code {
+            font-size: 1.05rem;
+        }
+
+        .table-of-contents,
+        .note-box,
+        .warning-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents h3,
+        .note-box h3,
+        .warning-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .table-of-contents li {
+            margin: 8px 0;
+        }
+
+        .table-of-contents a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .table-of-contents a:hover {
+            color: #007bff;
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 1rem;
+        }
+
+        /* Layout only — border and palette come from the cyberpunk table pass
+           in main.css, which already styles .blog-scrollable-content th/td. */
+        .workflow-table th,
+        .workflow-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .workflow-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin: 24px 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+
+        .workflow-flow span {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            color: #c4cfe0;
+            padding: 8px 12px;
+        }
+
+        .workflow-flow b {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+
+        .blog-scrollable-content .warning-box {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            border-left: 3px solid #ff2e88;
+            border-radius: 0;
+            box-shadow: -1px 0 14px rgba(255, 46, 136, 0.22);
+            color: #c4cfe0;
+        }
+
+        /* main.css recolours .note-box/.tips-box headings but not .warning-box.
+           Match them here. */
+        .blog-scrollable-content .warning-box h3 {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>AI Coding Workflows: From Cloud to Local</h1>
+            <p class="post-meta">Designing a workflow in which the model is a replaceable part</p>
+            <p class="post-meta">Posted on August 16, 2026</p>
+            <p class="post-meta">Read time: 25 mins | Tags: AI, Coding Agents, Local LLMs, Developer Workflow, Cost Engineering</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>Most arguments about AI-assisted development are arguments about which model is best. That question has a short shelf life and, more importantly, it is the wrong unit of analysis. A coding agent is an arrangement of parts: a harness that calls tools, an inference provider, a model doing the planning, possibly another doing the typing, and a physical location where the computation happens. Fix the arrangement badly and the best model in the world will still burn tokens re-reading files it already understood.</p>
+
+                <p><strong>The useful skill is not choosing the best coding model. It is designing a workflow in which the model, provider, execution location, and worker roles can change without changing the engineering contract.</strong></p>
+
+                <p>I first encountered this framing in DeepLearning.AI's <a href="https://www.deeplearning.ai/short-courses/ai-coding-workflows-from-cloud-to-local/">AI Coding Workflows: From Cloud to Local</a>, built with JetBrains. Its experiment rebuilds one small Python web app across eight configurations and records what each change does to context, tool calls, time and cost. That data is genuinely useful and I have summarised it in the case study at the end — but the argument below is about what it implies for any repository with explicit constraints and executable validation, which for me usually means a C++ codebase with a build system, a test suite, and interfaces whose misuse is expensive.</p>
+
+                <p>Two results are worth stating up front, because both contradict what I expected:</p>
+
+                <ul>
+                    <li>Splitting work across subagents made the first runs <strong>more</strong> expensive, not less. Delegation is an investment that only pays once the worker role changes model.</li>
+                    <li>Moving work off the expensive model did not remove context pressure. It relocated it onto the orchestrator, which then became the largest consumer in the run.</li>
+                </ul>
+
+                <div class="table-of-contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#more-than-model">1. A Coding Workflow Is More Than a Model</a></li>
+                        <li><a href="#harness">2. Build a Repeatable Evaluation Harness</a></li>
+                        <li><a href="#economics">3. The Real Economics of Delegation</a></li>
+                        <li><a href="#roles">4. Strong Planner, Cheaper Implementer</a></li>
+                        <li><a href="#packet">5. Design the Handoff Packet</a></li>
+                        <li><a href="#boundaries">6. Enforce Boundaries with Tools and Permissions</a></li>
+                        <li><a href="#local">7. What Changes When Inference Becomes Local</a></li>
+                        <li><a href="#measure">8. What to Measure</a></li>
+                        <li><a href="#choosing">9. Choosing a Configuration per Task</a></li>
+                        <li><a href="#case-study">10. A Compact Case Study</a></li>
+                        <li><a href="#conclusion">Conclusion</a></li>
+                    </ul>
+                </div>
+
+                <section id="more-than-model" class="blog-section">
+                    <h2>1. A Coding Workflow Is More Than a Model</h2>
+
+                    <p>Separating the harness from the model is the move that makes everything else visible. The harness reads instructions, calls tools, runs commands and manages the loop; the model only decides what to do next. Once those are distinct, three more parts separate out, and each is a decision rather than a given.</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Part</th>
+                                <th>What it decides</th>
+                                <th>What you inherit by default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Harness</td>
+                                <td>Which tools exist, what is permitted, how work is delegated</td>
+                                <td>Whatever you installed, plus its model ecosystem</td>
+                            </tr>
+                            <tr>
+                                <td>Inference provider</td>
+                                <td>Whose hardware runs the model, and the price per token</td>
+                                <td>The vendor bundled with the harness</td>
+                            </tr>
+                            <tr>
+                                <td>Planner model</td>
+                                <td>Decomposition, delegation, review, accept/reject</td>
+                                <td>The largest available, for everything</td>
+                            </tr>
+                            <tr>
+                                <td>Worker model</td>
+                                <td>The mechanical production of code</td>
+                                <td>Also the largest available</td>
+                            </tr>
+                            <tr>
+                                <td>Execution location</td>
+                                <td>What leaves the machine, and what a run costs at the margin</td>
+                                <td>Someone else's data centre</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>These are dials, not a ladder with a best setting at the top. A concurrency-sensitive refactor and the mechanical addition of a serialization function are not the same job, and there is no reason they should run on the same model in the same place.</p>
+
+                    <p>What makes the dials turnable is the engineering contract: the written constraints, the executable validation, and the delegation boundary between planning and implementation. If those three live in the repository, swapping a model is a configuration change. If they live in a chat transcript, they leave with the session, and every swap is a rewrite.</p>
+                </section>
+
+                <section id="harness" class="blog-section">
+                    <h2>2. Build a Repeatable Evaluation Harness</h2>
+
+                    <p>You cannot compare configurations unless each one receives the same task, the same constraints, the same starting revision, and the same judgement. Four artifacts, under version control:</p>
+
+                    <ul>
+                        <li><strong>Intent</strong> — what the software does and who it serves.</li>
+                        <li><strong>Constraints</strong> — the decisions already made, which are not the agent's to revisit.</li>
+                        <li><strong>Roadmap</strong> — the work split into phases that can be implemented and judged one at a time.</li>
+                        <li><strong>Acceptance tests</strong> — owned by whoever specified the phase, and off-limits to the worker.</li>
+                    </ul>
+
+                    <p>The constraints document does the heaviest lifting, because it closes the decisions an agent would otherwise make silently and differently on every run. For a C++ repository that means being explicit about the things a plausible-looking diff can quietly violate:</p>
+
+                    <ul>
+                        <li>Language standard and the compilers that must keep working.</li>
+                        <li>Warning policy, and whether warnings are errors.</li>
+                        <li>Sanitizer configuration the tests run under.</li>
+                        <li>Dependency manifest and whether adding to it requires approval.</li>
+                        <li>API and ABI stability boundaries — which headers are contracts and which are internal.</li>
+                        <li>Performance budgets, where a correct-but-slower implementation is a defect.</li>
+                    </ul>
+
+                    <p>Without that, one run adds a dependency, another redesigns an interface, a third picks a different concurrency model, and you are comparing engineering decisions rather than configurations.</p>
+
+                    <p>Beyond the contents, three properties do the real work.</p>
+
+                    <p><strong>One command decides the outcome.</strong> Every run must end in the same invocation returning the same kind of exit status — <code>cmake --workflow --preset ci</code>, which configures, builds and tests in one invocation, or whatever equivalent wrapper your project uses. That command is the scoreboard: it converts an impression into a result you can record beside a token count. Make sure it actually rebuilds — a bare <code>ctest</code> will happily test stale binaries after a source or build-system change, which is exactly the failure a worker will not notice and you will not see in a green result.</p>
+
+                    <p><strong>The scoreboard is not writable by what it scores.</strong> Acceptance tests belong to whoever specified the phase. If a worker can edit them, a run can pass by weakening the check instead of meeting it. Workers may add unit tests next to their code; those are output, not scoreboard.</p>
+
+                    <p><strong>Every run starts clean and ends reverted.</strong> A fresh context per run, and a return to the same commit afterwards, so the next configuration is not inheriting its predecessor's half-finished state or conversational memory. This discipline is worth keeping outside the experiment too — carrying a long context into a new task is the cheapest way to degrade quality without noticing.</p>
+                </section>
+
+                <section id="economics" class="blog-section">
+                    <h2>3. The Real Economics of Delegation</h2>
+
+                    <p>The standard advice is to split work across subagents so that each gets a small, focused context. The stated reason is sound: as a context window fills, output quality degrades even when everything still technically fits, because attention spreads across more material and details in the middle lose weight. A large model on a small task barely notices. A small model does not have the window to begin with.</p>
+
+                    <p>The implied conclusion — that splitting the work therefore saves tokens — is wrong, and the measurements say so clearly. Delegating each phase to a fresh subagent <em>on the same model</em> made the orchestrator leaner and the total bill larger: roughly 50% more context and turns, 20% more tool calls, and a higher cost than the single-context baseline.</p>
+
+                    <p>The mechanism is obvious in retrospect. A single long session reads a file once and keeps it. Every handoff re-establishes context the previous session already had: the worker reads the same headers, rediscovers the same conventions, and returns a summary the orchestrator must then absorb. With one model in both roles you are paying premium rates for that duplication and receiving nothing in exchange.</p>
+
+                    <div class="note-box">
+                        <h3>Delegation is a precondition, not a result</h3>
+                        <p>You cannot put a cheaper or local model on implementation until implementation is a separable, well-scoped job with an explicit interface. The cost increase from splitting the work is the price of building that interface. Judge it as an investment and check the return at the next step — not at this one.</p>
+                    </div>
+
+                    <p>The second correction is subtler and outlasts any particular pricing. When the work moved to eight small workers instead of two large ones, the average worker session dropped by roughly a factor of six — and the orchestrator's context grew almost eightfold, from 90K to 712K. Total context barely moved. Someone has to compose eight briefs and review eight results, and that someone is the expensive model.</p>
+
+                    <p>So context pressure relocates rather than disappearing. Two practical consequences: measure the planner and the worker separately or you will congratulate yourself on a saving that moved next door; and treat orchestration itself as a workload to be designed, because past a certain granularity you are paying more to describe the work than to do it.</p>
+                </section>
+
+                <section id="roles" class="blog-section">
+                    <h2>4. Strong Planner, Cheaper Implementer</h2>
+
+                    <p>Once implementation sits behind an interface, the model behind that interface becomes a variable — and this is where the cost curve actually bends. Keeping planning and review on a capable model while routing implementation to a small fast one produced a clear cost drop in the measured runs, even though turns and tool calls both rose.</p>
+
+                    <p>The split that matters is between judgement and transcription. In a C++ codebase the line is usually easy to draw:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Keep on the strong model</th>
+                                <th>Delegate to a cheap or local worker</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>A concurrency-sensitive refactor: what the locking discipline is, which invariants hold across threads</td>
+                                <td>Applying an agreed signature change across call sites</td>
+                            </tr>
+                            <tr>
+                                <td>Ownership and lifetime decisions at an interface boundary</td>
+                                <td>Implementing serialization against a fixed schema</td>
+                            </tr>
+                            <tr>
+                                <td>Whether a change breaks ABI or leaks an internal header into a public one</td>
+                                <td>Adding a bounded CMake target with stated sources, includes and link dependencies</td>
+                            </tr>
+                            <tr>
+                                <td>Template and overload design that downstream code will depend on</td>
+                                <td>Writing table-driven tests for behaviour that is already specified</td>
+                            </tr>
+                            <tr>
+                                <td>Reviewing the diff for the above, and rejecting it</td>
+                                <td>Mechanical adaptation of build files, fixtures and boilerplate</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>The economics only work if the brief is tight. Cheap models are cheap for a reason: given a vague or oversized task they produce mistakes, mistakes produce more turns, and enough extra turns cost more in time and money than using the capable model would have. The mitigation is a smaller, more explicit unit of work — not a better worker.</p>
+
+                    <h3>The same split, in three harnesses</h3>
+
+                    <p>This division is not a workaround; the tooling now assumes it. Both vendor-tied harnesses ship a tiered family designed for exactly this, and the open one lets you assemble your own. The names differ, the shape does not:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Role</th>
+                                <th>Claude Code</th>
+                                <th>Codex</th>
+                                <th>OpenCode</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Architect / reviewer</strong><br>Ambiguous, difficult, or expensive to get wrong: the concurrency design, the ABI question, the review that can reject a diff</td>
+                                <td>Opus</td>
+                                <td>Sol</td>
+                                <td>whichever frontier model you point it at</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Planner / orchestrator</strong><br>Normal feature work, debugging, refactors — decomposing a phase and writing the handoff packet</td>
+                                <td>Sonnet</td>
+                                <td>Terra</td>
+                                <td>a mid-tier hosted model via a router</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Implementer</strong><br>Clear, repeatable work with objective checks — which is exactly what a good packet plus an immutable test suite produces</td>
+                                <td>Haiku</td>
+                                <td>Luna</td>
+                                <td>a cheap hosted model, or a local one</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>That last row is worth dwelling on, because "clear, repeatable, with objective checks" is not a property of the task you are handed — it is a property you manufacture. A bounded CMake target with named sources and a pass/fail preset qualifies. "Make this module thread-safe" does not. The specification work in sections 2 and 5 is what moves a job from the top row to the bottom one, and the price spread between tiers is the return on doing it.</p>
+
+                    <p>Mechanically, the assignment belongs in configuration rather than in a prompt. All three harnesses put a delegated agent in its own file under the project, so the worker's tier becomes a committed, reviewable artifact instead of a sentence someone has to remember to type. Claude Code uses Markdown with YAML front matter, where the body is the agent's system prompt:</p>
+
+                    <pre class="code-snippet"><code>&lt;!-- .claude/agents/implementer.md --&gt;
+---
+name: implementer
+description: Implements one delegated packet against named paths.
+model: haiku
+maxTurns: 12
+disallowedTools: WebFetch, WebSearch
+permissionMode: acceptEdits
+---
+
+Implement only the delegated packet, touching only the paths it names.
+Write each file's complete final content; never patch by anchor.
+Build and run targeted tests as often as you need while working.
+Finish by running the scoreboard command exactly once, then stop and
+report its result whether it passes or fails. Do not repair after it.</code></pre>
+
+                    <p>Codex splits the same information between the planner's <code>config.toml</code> and one TOML file per delegated agent, with the system prompt as a <code>developer_instructions</code> string:</p>
+
+                    <pre class="code-snippet"><code># ~/.codex/config.toml — the planner
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"</code></pre>
+
+                    <pre class="code-snippet"><code># .codex/agents/implementer.toml — the worker
+name = "implementer"
+description = "Implements one delegated packet against named paths."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "low"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Implement only the delegated packet, touching only the paths it names.
+Write each file's complete final content; never patch by anchor.
+Build and run targeted tests as often as you need while working.
+Finish by running the scoreboard command exactly once, then stop and
+report its result whether it passes or fails. Do not repair after it.
+"""</code></pre>
+
+                    <p>OpenCode uses Markdown with front matter like Claude Code, but qualifies the model with its provider — which is where the open harness earns its keep:</p>
+
+                    <pre class="code-snippet"><code>&lt;!-- .opencode/agents/implementer.md --&gt;
+---
+description: Implements one delegated packet against named paths.
+mode: subagent
+model: openrouter/deepseek/deepseek-v4-flash
+steps: 12
+---
+
+Implement only the delegated packet, touching only the paths it names.
+Write each file's complete final content; never patch by anchor.
+Build and run targeted tests as often as you need while working.
+Finish by running the scoreboard command exactly once, then stop and
+report its result whether it passes or fails. Do not repair after it.</code></pre>
+
+                    <p>Change that one string to <code>lmstudio/&lt;model-id&gt;</code> and the same worker, with the same brief and the same guardrails, runs on your own hardware instead of someone else's. Nothing else in the file moves. That is the thesis of this article reduced to a single line of configuration — and the reason the open harness is worth the setup cost even if you never leave the cloud.</p>
+
+                    <p>One thing these three files do <em>not</em> do is confine the worker to the paths its packet names. <code>permissionMode: acceptEdits</code> and <code>sandbox_mode = "workspace-write"</code> are coarse boundaries: they decide whether the agent may write in the working directory at all, not which files it may touch. The named-path restriction lives in the body, which makes it advisory — a distinction section 6 takes seriously, because path-level enforcement is available in some harnesses and has to be replaced by review in the others.</p>
+
+                    <p>The vocabularies differ; the levers are largely the same. Every one of these files carries a model choice and some way to restrict what the worker can reach — though, as the table shows, they do not all give you the same control:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Lever</th>
+                                <th>Claude Code</th>
+                                <th>Codex</th>
+                                <th>OpenCode</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Worker tier</td>
+                                <td><code>model:</code></td>
+                                <td><code>model</code></td>
+                                <td><code>model:</code>, provider-qualified</td>
+                            </tr>
+                            <tr>
+                                <td>Loop ceiling</td>
+                                <td><code>maxTurns:</code></td>
+                                <td>none per agent — see below</td>
+                                <td><code>steps:</code></td>
+                            </tr>
+                            <tr>
+                                <td>Reachable tools</td>
+                                <td><code>tools:</code> / <code>disallowedTools:</code></td>
+                                <td><code>sandbox_mode</code>, <code>mcp_servers</code></td>
+                                <td><code>permission:</code> keys</td>
+                            </tr>
+                            <tr>
+                                <td>Write scope</td>
+                                <td>coarse (working directory)</td>
+                                <td>coarse (workspace)</td>
+                                <td>fine (per-path allow/deny)</td>
+                            </tr>
+                            <tr>
+                                <td>Behaviour brief</td>
+                                <td>Markdown body</td>
+                                <td><code>developer_instructions</code></td>
+                                <td>Markdown body</td>
+                            </tr>
+                            <tr>
+                                <td>Scope of model choice</td>
+                                <td>one vendor's family</td>
+                                <td>one vendor's family</td>
+                                <td>any provider, cloud or local</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>The distinction that matters is between the behaviour brief and everything above it. The brief is persuasion; every other row is enforced by the harness. That is the argument of section 6 — and it is why a reviewer agent should be defined with <code>disallowedTools: Write, Edit</code>, <code>sandbox_mode = "read-only"</code>, or a deny-by-default <code>permission</code> block, rather than merely told not to change anything.</p>
+
+                    <p>Two gaps are worth naming rather than papering over. Codex has no documented per-agent turn or step cap — the session-wide token controls are not the same thing — so termination has to come from the parent workflow: delegate one phase, require a single scoreboard run, and check that the child returned instead of trusting it to stop itself. And only OpenCode offers path-level write rules; in the other two, "these files and no others" is a review obligation, not a setting.</p>
+
+                    <p>The last row is the one that decides how many of these dials you actually have. A vendor-tied harness gives you a tier ladder inside one family, which covers the cost argument but not the location one. An open harness treats the provider as part of the model identifier, so the cheap-worker move and the go-local move become the same edit.</p>
+
+                    <p>One caution on comparisons: reasoning effort is part of the configuration, not a detail. The tiers span the same documented effort range, so a high-effort run measured against a default-effort one tells you about the setting rather than the model. Pin it explicitly on both sides or the comparison is meaningless.</p>
+
+                    <p>The deeper reason this example belongs here: separating a generation number from a durable capability tier is the vendor conceding the argument of this article. The tier is a role you assign; the model behind it is expected to be replaced. A workflow built around roles survives that replacement, while one built around a specific model name does not.</p>
+
+                    <h3>Watch who actually does the work</h3>
+
+                    <p>A failure mode to watch for specifically: the planner, seeing weak output, quietly rewrites the code itself. Cost returns to the single-model baseline while the workflow still looks delegated. Instruct the planner to send defects back to a fresh worker rather than fixing them, and verify it by checking which role consumed the tokens.</p>
+
+                    <p>The allocation I would default to, in decreasing order of capability: a top-tier model for architecture, roadmap shaping and periodic whole-project review; a mid-tier model for orchestration inside a phase; a cheap or local model for each implementer.</p>
+                </section>
+
+                <section id="packet" class="blog-section">
+                    <h2>5. Design the Handoff Packet</h2>
+
+                    <p>The handoff packet — the instructions, context and constraints the planner prepares before delegating — is the interface between the two roles, and the main lever that makes the split succeed or fail. It has to be sized for the worker's actual capacity: its context window, its tool-calling reliability, its tendency to improvise.</p>
+
+                    <p>What belongs in one:</p>
+
+                    <ul>
+                        <li>The repo-relative paths the worker may write, and nothing beyond them.</li>
+                        <li>The paths it must read but never modify — the interface it implements against, the acceptance suite that scores it.</li>
+                        <li>The complete required final state in prose: declarations, behaviour, error handling, and which existing behaviour must survive unchanged.</li>
+                        <li>Exact identifiers where they are contract requirements: a type name, a signature, a build target, an error string a test asserts on.</li>
+                        <li>The scoreboard command, named explicitly, to be run once as the final action.</li>
+                        <li>An explicit stop condition — report the scoreboard result whether it passes or fails, and do not continue past it.</li>
+                    </ul>
+
+                    <p>What to leave out matters just as much. Do not point the worker at the specification directory; following references costs context it does not have. Do not paste whole files. And do not hand it finished code — if the planner writes the implementation into the packet, you have paid the expensive model to produce it and the cheap one to copy it.</p>
+
+                    <p>A packet for a typical C++ phase — one new concrete type behind an interface that already exists — comes out roughly like this. The module and type names are placeholders; the structure is what to copy.</p>
+
+                    <pre class="code-snippet"><code>Writable paths:
+  include/core/component.hpp   (new)
+  src/core/component.cpp       (new)
+  src/core/CMakeLists.txt      (modify: add the two sources to
+                                the existing core target)
+
+Read-only — read these, never modify them:
+  include/core/component_base.hpp   (the interface to implement)
+  tests/acceptance/                 (the suite that scores you)
+
+Required final state:
+  - Component publicly implements ComponentBase and overrides
+    every pure virtual member.
+  - Fallible operations return the project's error type rather
+    than throwing; the failure cases named in the acceptance
+    tests map to the documented error codes.
+  - Every owned resource is held in an RAII member, so a
+    partially constructed object releases what it acquired.
+  - Construction either succeeds or fails through the project's
+    result type; there is no half-initialised, reachable state.
+  - The core target keeps its current public include directory
+    and link dependencies; add no new third-party library.
+
+For every writable file, use `write` with its complete final
+content; never use `edit`.
+
+While implementing, build and run targeted tests as often as
+useful — the compiler is your fastest feedback.
+
+Scoreboard, run once as your final action:
+  cmake --workflow --preset ci
+Stop after it, pass or fail, and report the result.</code></pre>
+
+                    <p>Every clause in the required-final-state block is a contract the acceptance suite can check and a reviewer can reject on. None of them describe how to write the code, which is the line worth holding: the packet fixes the obligations, the worker chooses the implementation.</p>
+
+                    <p>Two properties make this worth the effort. The packet is model-independent — the same brief works on a frontier worker, a hosted open-weight one, and a local model, which is precisely what makes the roles swappable. And it is inspectable while the run is still going: reading the packet tells you whether the delegation matches your intent long before the diff does.</p>
+                </section>
+
+                <section id="boundaries" class="blog-section">
+                    <h2>6. Enforce Boundaries with Tools and Permissions</h2>
+
+                    <p>Prompt instructions are advisory. Configuration is enforced. This distinction is not theoretical: in the recorded runs, a worker told not to write complete code obeyed the instruction in one phase and partially ignored it in the next, with no other change. What you write in a prompt or an agent definition body is persuasion; small models in particular have a mind of their own.</p>
+
+                    <p>So anything that actually matters belongs in the part of the agent definition the harness applies — and it should be written as an allowlist. A rule that permits everything except the specs still leaves the worker free to edit the dependency manifest, the build presets, the acceptance suite and its own definition: every input the comparison depends on.</p>
+
+                    <pre class="code-snippet"><code>&lt;!-- .opencode/agents/implementer.md --&gt;
+---
+description: Minimal implementer for one well-specified phase.
+mode: subagent
+model: &lt;small-or-local-model-id&gt;
+steps: 12
+permission:
+  edit:
+    "*": deny
+    "include/core/component.hpp": allow
+    "src/core/component.cpp": allow
+    "src/core/CMakeLists.txt": allow
+  bash:
+    "*": deny
+    "cmake --preset ci": allow
+    "cmake --build --preset ci *": allow
+    "ctest --preset ci *": allow
+    "cmake --workflow --preset ci": allow
+  glob: deny
+  webfetch: deny
+  websearch: deny
+---</code></pre>
+
+                    <p>This is OpenCode's syntax, chosen because it is the one that expresses path-level write rules directly. Claude Code and Codex give you the coarser boundaries from section 4 — whether the agent may write at all — so the "these files and nothing else" clause stays in the packet and becomes something review has to check rather than something the harness refuses.</p>
+
+                    <p>Every line maps to an observed failure:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Constraint</th>
+                                <th>Failure it prevents</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Step ceiling</td>
+                                <td>Retry loops that run until the context is exhausted</td>
+                            </tr>
+                            <tr>
+                                <td>Write allowlist</td>
+                                <td>Editing the specs, tests, manifest or presets to match what was built</td>
+                            </tr>
+                            <tr>
+                                <td>Command allowlist</td>
+                                <td>Package installs, network fetches, anything bypassing the project's presets</td>
+                            </tr>
+                            <tr>
+                                <td>Search and web tools disabled</td>
+                                <td>Wandering the repository and exploding its own context</td>
+                            </tr>
+                            <tr>
+                                <td>Whole-file writes, never anchored edits</td>
+                                <td>A mismatched anchor retried forever — the most common small-model failure</td>
+                            </tr>
+                            <tr>
+                                <td>Read the real file before changing it</td>
+                                <td>Rewriting a half-remembered version held in context</td>
+                            </tr>
+                            <tr>
+                                <td>No recursive listing of generated trees</td>
+                                <td>One command flooding the window from <code>build/</code>, <code>_deps/</code> or a vendored tree</td>
+                            </tr>
+                            <tr>
+                                <td>Run the scoreboard once, report, do not repair</td>
+                                <td>The rerun-and-fix death spiral after the result is in</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>That last one needs a distinction that is easy to get wrong, and I had it wrong at first. The worker's inner development loop is not the enemy: compiling and running targeted tests while writing code is the fastest feedback a C++ worker has, and forbidding it makes the compiler useless as a tool. The allowlist above therefore permits the ordinary configure, build and test commands.</p>
+
+                    <p>What must happen exactly once is the <em>scoreboard</em> — the full run whose exit status you record. After it reports, the worker stops. Without that boundary a worker reacting to a red result will edit and rebuild indefinitely, and in a C++ project each iteration is expensive enough that a great deal of wall clock disappears before anyone notices. One scoreboard run, reported upward, keeps the failure cheap and legible; whether to repair is the planner's decision, not the worker's.</p>
+
+                    <p>Note the asymmetry with the planner: broad read access, no write access during review. Read-only review is what lets you trust a report about work produced by a model you would not trust to implement unsupervised.</p>
+
+                    <p>The cost of a path allowlist is that the packet and the agent definition must agree, which means regenerating the permission block per phase. That is a fair trade — it forces the decision about what a phase may touch to happen before the worker starts, rather than in the diff.</p>
+                </section>
+
+                <section id="local" class="blog-section">
+                    <h2>7. What Changes When Inference Becomes Local</h2>
+
+                    <p>Serving the model from your own hardware — LM Studio, Ollama, llama.cpp, vLLM — takes the metered inference cost of a run to zero, works offline, and means the model itself never transmits your source anywhere. For code under a confidentiality obligation, that last point can be the entire justification.</p>
+
+                    <div class="warning-box">
+                        <h3>Local closes one egress path, not all of them</h3>
+                        <p>Web-fetch tools, package installs, MCP servers and telemetry in the surrounding tooling can still send data outward. If confidentiality is why you went local, audit the tool list, not just the model endpoint.</p>
+                    </div>
+
+                    <p>What gets harder is specific and predictable:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Constraint</th>
+                                <th>Symptom</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Small context window</td>
+                                <td>The worker loses the earlier half of the task</td>
+                                <td>Smaller phases; self-contained packets; never reference spec files</td>
+                            </tr>
+                            <tr>
+                                <td>Weaker tool calling</td>
+                                <td>Malformed or repeated edit calls</td>
+                                <td>Whole-file writes; step ceiling; one permitted command</td>
+                            </tr>
+                            <tr>
+                                <td>Slower generation</td>
+                                <td>Minutes per file on consumer hardware</td>
+                                <td>Quantisation sized to available memory; keep worker output short</td>
+                            </tr>
+                            <tr>
+                                <td>Loose instruction following</td>
+                                <td>Unrequested changes, invented dependencies</td>
+                                <td>Deny-by-default permissions rather than prose</td>
+                            </tr>
+                            <tr>
+                                <td>Platform-specific model builds</td>
+                                <td>Identifiers differ between hardware-specific formats</td>
+                                <td>Read the served model ID from the runtime rather than copying it</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>The design consequence is that <strong>the unit of work is sized for the weakest participant</strong>. In the measured runs, one roadmap phase had to be split in two before a local worker could complete it. Splitting costs a capable model nothing, so the granularity should be set by whatever you intend to run at the bottom end. For a C++ project that argues for phases scoped to a single target or a single translation unit's worth of behaviour, with the interface fixed beforehand by the planner.</p>
+
+                    <p>One piece of local-inference advice runs against instinct and is worth repeating: do not maximise the served context window. A larger window on a small model invites exactly the oversized, unfocused sessions that make small models fail. Keep the worker's context modest on purpose and control size through the packet instead.</p>
+
+                    <p>The honest summary of the state of the art is that the weights are ahead of the harnesses. Most of the work in making a local worker succeed is hand-written guardrails of the kind in the previous section, because few frameworks ship that scaffolding yet. That is the layer worth watching — more than the model leaderboards.</p>
+                </section>
+
+                <section id="measure" class="blog-section">
+                    <h2>8. What to Measure</h2>
+
+                    <p>Run each configuration against the same phases and record the same columns, split between planner and worker. The split is more informative than the totals, because delegation is precisely a claim about moving work between those two columns.</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>How to read it</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Total context processed</td>
+                                <td>Tokens billed and re-read across the session. A cost and repetition measure — track per role, or you will miss relocation</td>
+                            </tr>
+                            <tr>
+                                <td>Peak and average active context</td>
+                                <td>How full the window actually got on a given turn. This, not the total, is what predicts degraded output</td>
+                            </tr>
+                            <tr>
+                                <td>Tool calls</td>
+                                <td>An activity proxy, not a work measure — a full build and a one-line read each count once</td>
+                            </tr>
+                            <tr>
+                                <td>Turns</td>
+                                <td>Interaction style, not work done — see the caveat below</td>
+                            </tr>
+                            <tr>
+                                <td>Wall-clock time</td>
+                                <td>Useful but noisy; hardware load and network affect it</td>
+                            </tr>
+                            <tr>
+                                <td>Metered cost</td>
+                                <td>Zero for local inference, which is the entire point of going there</td>
+                            </tr>
+                            <tr>
+                                <td>First-pass validation result</td>
+                                <td>The correctness signal, taken before any repair by planner or human</td>
+                            </tr>
+                            <tr>
+                                <td>Interventions</td>
+                                <td>How often you had to step in — the cost that does not appear on any dashboard</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Separating the two context measures matters because they answer different questions. A session that reads the same header twenty times has a large total and a small active context: it is expensive but not confused. A single turn carrying an entire subsystem has the opposite profile, and that is the one that produces subtly wrong code. Delegation improves the second while often worsening the first, which is precisely why reporting only the total makes the trade invisible.</p>
+
+                    <p>The turns caveat is not pedantry. In the fully local run, total turns rose from 6 to 45 while tool calls went from 51 to 57. Seven times the turns for essentially identical tool activity: the models were simply taking more, smaller steps between actions. Ranking configurations by turn count would have produced a completely wrong conclusion.</p>
+
+                    <p>Intervention count is the one most often omitted and the one most likely to reverse a decision. A configuration that is an order of magnitude cheaper but needs three corrective rounds and half an hour of your attention is not cheaper in any sense that matters for paid work. It may still be the right choice for a personal project where your time is not billed.</p>
+
+                    <p>Finally, run each configuration more than once. These systems are stochastic; a single green result proves less than it appears to.</p>
+                </section>
+
+                <section id="choosing" class="blog-section">
+                    <h2>9. Choosing a Configuration per Task</h2>
+
+                    <p>The measurements produce a preference, but the choice is usually settled by the nature of the work rather than the benchmark table.</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Situation</th>
+                                <th>Reasonable configuration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Novel architecture, unclear requirements, a subtle bug in threading or lifetime</td>
+                                <td>Single capable model, one context. Judgement is the bottleneck; delegation only adds overhead</td>
+                            </tr>
+                            <tr>
+                                <td>Well-specified phases in an established codebase</td>
+                                <td>Capable planner, cheap implementers. The best default for routine work</td>
+                            </tr>
+                            <tr>
+                                <td>Cost pressure, or unwillingness to depend on one vendor</td>
+                                <td>Open-weight workers behind a router, planner unchanged</td>
+                            </tr>
+                            <tr>
+                                <td>Confidential code, offline work, unmetered experimentation</td>
+                                <td>Local worker, capable planner. Phases sized accordingly</td>
+                            </tr>
+                            <tr>
+                                <td>Mechanical work with strong test coverage</td>
+                                <td>Fully local, with review as the only cloud step — or no cloud step at all</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Mixing is the mature answer. The constraints, the roadmap and the acceptance suite are the durable assets; the model configuration is a per-task dial. A project with that contract in place can run a local worker on boilerplate in the morning and a frontier model on a data race in the afternoon without changing anything about how the work is described.</p>
+                </section>
+
+                <section id="case-study" class="blog-section">
+                    <h2>10. A Compact Case Study</h2>
+
+                    <p>The figures quoted throughout come from the course's experiment: one small FastAPI application — a home page, a list view, and a submission form — specified in three Markdown files and rebuilt from scratch in each configuration, with a fresh context each time and a revert in between.</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Configuration</th>
+                                <th>Key figures</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Cloud harness, capable model, single context</td>
+                                <td>19 turns, 28 tool calls, 474K context. A subagent spawned by the harness itself took 54% of context</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>Same model, one subagent per phase</td>
+                                <td>Planner 217K → 192K; workers 257K → 511K; total context and turns <strong>+50%</strong>, cost up</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>Capable planner, cheap workers</td>
+                                <td>Turns +50%, tool calls +48%, context +29% — and cost <strong>down notably</strong>. Context per worker turn 21K → 17K</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>Open-source harness, router, open-weight model</td>
+                                <td>25 turns, 38 tool calls, 530K, ~$0.02. Cheaper tokens, not better orchestration</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>Same, one subagent per phase</td>
+                                <td>Planner down to 90K; workers 94% of context; total context +179%, cost ~3×</td>
+                            </tr>
+                            <tr>
+                                <td>6</td>
+                                <td>Capable planner, small workers via agent definition</td>
+                                <td>8 workers instead of 2; per-worker context 694K → 110K; <strong>planner 90K → 712K</strong>; total context +8%, cost −28%</td>
+                            </tr>
+                            <tr>
+                                <td>7</td>
+                                <td>Cloud planner, local worker (12B, quantised)</td>
+                                <td>Workers 117K across three phases; planner 69% of context; ~$0.02 total; 8m52s</td>
+                            </tr>
+                            <tr>
+                                <td>8</td>
+                                <td>Fully local (27B planner, 12B worker)</td>
+                                <td>Planner 178K, workers 158K, total context −11%; turns 45 vs 6 for 57 vs 51 tool calls; <strong>$0.00</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Rows 1–6 are a controlled comparison: same task, same phases, same prompt shape, one variable moving at a time. <strong>Rows 7 and 8 are not.</strong> Reaching a local worker required changing the workflow as well as the model — the roadmap was split from two phases into three, the worker gained the guardrails described in section 6, and the single-shot prompt became one run per phase. Those rows measure a different way of working, not just different weights, and their totals cover three phases rather than two. Read them as evidence that local inference is reachable, not as a like-for-like delta against row 6.</p>
+
+                    <p>With that caveat, three findings generalise beyond the toy project. <strong>Rows 1→2:</strong> delegation on a single model costs more and buys only the interface. <strong>Row 6:</strong> shrinking worker sessions inflates the planner — the work relocates. <strong>Row 8:</strong> a 27B model on a laptop produced task briefs that held up against a much larger hosted model, and completed two of three phases with no reported defects; the third failed on an HTTP redirect detail caught by a test and repaired by delegating back to the worker.</p>
+
+                    <div class="note-box">
+                        <h3>How much weight to put on these numbers</h3>
+                        <p>Each row is a single recorded run of a deliberately small application, on one machine, with the models available at the time. They are evidence about direction and magnitude — that delegation initially costs more, that context relocates, that turns mislead — not benchmarks to reproduce. The methodology transfers; the figures do not.</p>
+                    </div>
+                </section>
+
+                <section id="conclusion" class="blog-section">
+                    <h2>Conclusion</h2>
+
+                    <p>The configuration that wins today will be obsolete within a year, and the models named in any article about this will age faster than the article does. What survives is the contract: constraints written where any agent can read them, one command that settles whether the work is done, acceptance tests that the worker cannot touch, and a delegation boundary explicit enough that the thing on the other side of it is replaceable.</p>
+
+                    <p>Build that and the dials become real. You can put a local model on mechanical work and keep judgement in the cloud, or move the whole pipeline in-house when the code is confidential, or go back to a single capable model for a problem that is genuinely hard — and in each case you are choosing, with evidence, rather than inheriting a default.</p>
+
+                    <p>Start with the smallest version: pin the constraints, wrap validation behind one command, make the acceptance tests immutable, and write one handoff packet by hand. Everything else in this article is a configuration change on top of that.</p>
+
+                    <div class="note-box">
+                        <h3>Source</h3>
+                        <p>The measurements cited here are from <a href="https://www.deeplearning.ai/short-courses/ai-coding-workflows-from-cloud-to-local/">AI Coding Workflows: From Cloud to Local</a>, a short course from DeepLearning.AI and JetBrains taught by Paul Everitt; its <a href="https://github.com/https-deeplearning-ai/sc-ai-coding-workflows-files">companion repository</a> holds the specifications, subagent definitions and prompts. For the specification practices this workflow depends on, see also <a href="ai-spec-driven-development-workflow.html">AI Spec-Driven Development</a>.</p>
+                    </div>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
