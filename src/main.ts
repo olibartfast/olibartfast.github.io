@@ -114,12 +114,30 @@ function navHeight(): number {
     return nav ? nav.getBoundingClientRect().height : 0;
 }
 
+// Article pages scroll inside .blog-scrollable-content rather than the window,
+// so an in-page link has to move whichever element actually scrolls.
+function scrollParentOf(target: HTMLElement): HTMLElement | null {
+    for (let el = target.parentElement; el; el = el.parentElement) {
+        const overflowY = getComputedStyle(el).overflowY;
+        const scrolls = overflowY === "auto" || overflowY === "scroll";
+        if (scrolls && el.scrollHeight > el.clientHeight) return el;
+    }
+    return null;
+}
+
 function scrollToTarget(target: HTMLElement): void {
-    const top = target.getBoundingClientRect().top + window.scrollY - navHeight() - 12;
     const behavior: ScrollBehavior =
         prefersReducedMotion() || root.dataset.fx === "off" ? "auto" : "smooth";
 
-    window.scrollTo({ top, behavior });
+    const container = scrollParentOf(target);
+    if (container) {
+        const offset =
+            target.getBoundingClientRect().top - container.getBoundingClientRect().top;
+        container.scrollTo({ top: container.scrollTop + offset - 12, behavior });
+    } else {
+        const top = target.getBoundingClientRect().top + window.scrollY - navHeight() - 12;
+        window.scrollTo({ top, behavior });
+    }
 
     // Anchors are not focusable by default; make the landing spot the next tab
     // stop without letting the browser jump the scroll position again.
