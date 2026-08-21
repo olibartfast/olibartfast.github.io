@@ -1,0 +1,259 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>The AI Engineering Skills Map - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Notes on Andrew Ng's four AI engineering skills, and the tension between two of them that the article doesn't mention."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        code {
+            font-size: 1.05rem;
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 1rem;
+        }
+
+        /* Layout only — border and palette come from the cyberpunk table pass
+           in main.css, which already styles .blog-scrollable-content th/td. */
+        .workflow-table th,
+        .workflow-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .note-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .note-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left" aria-label="Back to home">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>The AI Engineering Skills Map</h1>
+            <p class="post-meta">Notes on Andrew Ng's four skills, and a tension between two of them</p>
+            <p class="post-meta">Posted on August 21, 2026</p>
+            <p class="post-meta">Read time: 9 mins | Tags: AI Engineering, Evals, Coding Agents, Software Engineering</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>Andrew Ng published <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map">The AI Engineering Skills Map</a> in <em>The Batch</em> on 14 August. It names four skills for building software in 2026: building and deploying AI applications, software engineering fundamentals, using coding agents, and shaping the build. He says it draws on more than 10,000 job postings along with expert interviews and surveys.</p>
+
+                <p>My usual reaction to a list like this is that every item on it is true and none of it is usable. Nobody reads "software engineering fundamentals matter" and does anything differently. But this one stuck with me for a few days, mostly because two of the four items pull against each other and the article doesn't say so.</p>
+
+                <p>Notes on each, then the part I think is missing.</p>
+
+                <section id="evals" class="blog-section">
+                    <h2>Building and deploying AI applications</h2>
+
+                    <p>Ng's framing is that AI systems produce unpredictable outputs, so the job is to measure, steer and govern them. The building blocks are the vocabulary: LLMs, context engineering, RAG, agentic workflows, and the machine learning underneath. The discipline is evals and error analysis.</p>
+
+                    <p>The vocabulary is the easy half, and it is where most of the attention goes. Wiring a retrieval step to a prompt is an afternoon. The harder question is whether you can say how often the system is wrong, in what way, and whether that has changed since last week.</p>
+
+                    <p>Anyone coming from machine learning already has this. In vision work you don't ship a detector because the demo looked good. You have a held-out set that resembles deployment rather than whatever was convenient to collect, numbers broken down per class and per condition so a regression has an address, and a fixed protocol so that "better" is a claim rather than an impression. Then you look at the failures. Not the aggregate — the actual images, in batches, sorted into causes before you touch anything.</p>
+
+                    <p>None of that changes when the output is tokens instead of boxes. The labels are harder to get and the failures are more varied, but the loop is the same. What changes is the pull away from it. Prompt-tweaking gives you the feeling of progress in about four seconds, and evals give you nothing for a day and a half, so people tweak. The habit worth keeping is the boring one: take twenty failures, group them by cause, fix the largest group. That hour is usually the highest-leverage hour available and it is almost never scheduled.</p>
+
+                    <p>The "deploying" half of that heading matters too, and it splits into two problems that get confused. A hosted model is an unreliable network dependency with latency variance, rate limits and a per-call cost, and everything the profession knows about those applies unchanged: timeouts, retries with backoff, circuit breakers, cost budgets, contract tests against a pinned version.</p>
+
+                    <p>None of that machinery catches the failure specific to this dependency, which is a response that arrives quickly, with a 200, and is wrong. Retries don't help because nothing failed. That needs its own layer: validation of the output against a schema or a constraint, cross-checks against a source of truth where one exists, some way for the system to abstain, and a human in the loop where a wrong answer is expensive. The common shape is a service hardened carefully against the failures that announce themselves and not at all against the ones that don't.</p>
+                </section>
+
+                <section id="fundamentals" class="blog-section">
+                    <h2>Software engineering fundamentals</h2>
+
+                    <p>This is the item that gets read as reassurance. See, the old skills still count. I think that reading is too comfortable.</p>
+
+                    <p>The claim isn't that fundamentals survived. It's that the moment you use them moved. You need to know what a mutex costs, what breaks an ABI, why that allocation is sitting in the hot loop — but increasingly you need it in order to state a constraint before anything is generated, and to recognise in a few seconds that the diff in front of you is wrong. Less for writing the code, more for specifying it and rejecting it.</p>
+
+                    <p>An agent will hand you something that compiles and passes the tests you already have. Whether it holds a latency budget, respects the ownership model, keeps an internal header out of a public one, or avoids a race that only shows up under contention is not something the compiler will mention and not something the model checks itself. The knowledge is the same as it ever was. Where it gets applied has shifted to either end:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Fundamental</th>
+                                <th>Where it used to get used</th>
+                                <th>Where it gets used now</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Ownership and lifetimes</td>
+                                <td>Writing the code that gets it right</td>
+                                <td>Stating the contract up front, and spotting the diff that quietly breaks it</td>
+                            </tr>
+                            <tr>
+                                <td>Concurrency</td>
+                                <td>Implementing the locking discipline</td>
+                                <td>Choosing the discipline, and rejecting code that reasons about threads loosely</td>
+                            </tr>
+                            <tr>
+                                <td>Performance</td>
+                                <td>Optimising the loop</td>
+                                <td>Putting the budget in the acceptance criteria, so correct-but-slower fails</td>
+                            </tr>
+                            <tr>
+                                <td>Interfaces and ABI</td>
+                                <td>Designing the header</td>
+                                <td>Marking which boundaries are contracts before anything gets generated</td>
+                            </tr>
+                            <tr>
+                                <td>Testing</td>
+                                <td>Covering your own code</td>
+                                <td>Owning the tests the agent isn't allowed to edit</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>There's a consequence here I don't have a good answer to. Fundamentals were mostly learned by writing a lot of code badly and watching it fail — by being the person who introduced the race and then spent two days finding it. If the agent writes the code, that loop is gone, and the judgement it produced is exactly what the map says you now need. The best I have is that some amount of unassisted implementation has to be treated as practice rather than output, deliberately slower than necessary. That's an unsatisfying answer and I'd rather hear a better one.</p>
+                </section>
+
+                <section id="agents" class="blog-section">
+                    <h2>Using coding agents</h2>
+
+                    <p>Ng lists context management, planning versus execution, verification, orchestration, and avoiding catastrophic failures, with the observation that the skill is knowing how much to intervene and how much to leave the agent alone.</p>
+
+                    <p>That last part is the whole thing and it's a calibration problem, which means it can't really be written down. Step in too early and you have an expensive autocomplete. Step in too late and you're reading four hundred lines that rest on a decision that was wrong near the top. The right moment depends on the task, the codebase and the model, and all three keep moving.</p>
+
+                    <p>What can be written down is the model underneath. A coding agent isn't one thing — it's a harness, an inference provider, a planner, a worker, and a place where the computation happens. I went through this at length in <a href="ai-coding-workflows-cloud-to-local.html">AI Coding Workflows: From Cloud to Local</a>. Once those parts are separate in your head, using agents stops being about prompt phrasing and starts being a set of choices you can have opinions about.</p>
+
+                    <p>Two of those opinions I'd defend. Context is a budget rather than a container: quality falls off as the window fills, well before anything overflows, so starting fresh is a technique and not an admission of defeat. And splitting work across subagents doesn't automatically save anything. Measured, it often costs more, because every handoff re-establishes context the previous session already had. What the split buys is an interface, and the interface is what lets you put a cheaper or local model behind it later.</p>
+
+                    <p>The catastrophic-failures item reads like boilerplate until an agent runs something destructive against something real. Sandboxing, least-privilege tool permissions, a clean branch per run, no production credentials in the loop. It's the one item on the map where learning by failing isn't an option.</p>
+                </section>
+
+                <section id="shaping" class="blog-section">
+                    <h2>Shaping the build</h2>
+
+                    <p>The argument is that as agents get better at executing a specification, the scarce work becomes deciding what the specification says: product sense, business context, talking to whoever has the problem, owning the thing through the cycle instead of receiving a ticket.</p>
+
+                    <p>I think this is the most important item and the one with the weakest advice attached, mine included. The other three have feedback loops that answer quickly. A compiler answers immediately and without diplomacy. A sanitizer, a profiler, a test suite, an eval set — all of them tell you today whether you were right. Shaping the build answers in months, gives you a handful of samples a year, and confounds every one of them with market timing and whatever else shipped that quarter. That's close to the worst environment a skill can be learned in, which is probably why product sense is so unevenly distributed among otherwise excellent engineers.</p>
+
+                    <p>The things that seem to shorten the loop aren't reading about product management. Watch someone use the thing for half an hour; the gap between what people say they need and what they do is where most of the information is. Write the prediction down before shipping, because otherwise you'll remember having expected whatever happened and learn nothing. Ship smaller, since iterations are the only lever on a slow loop.</p>
+
+                    <p>There's a version of this specific to applied ML that I find sharper than the general advice. Choosing what to measure <em>is</em> the product decision, wearing technical clothes. A detector tuned for mAP and a detector tuned so the operator doesn't stop trusting the alerts are different systems built by the same people from the same data, and the choice between them won't come up in any modelling discussion. No agent is going to raise it either.</p>
+                </section>
+
+                <section id="tension" class="blog-section">
+                    <h2>The part that's missing</h2>
+
+                    <p>Skills two and three point in opposite directions, and the map presents them as a flat list.</p>
+
+                    <p>Using agents well means delegating: let the thing work, orchestrate instead of typing. Fundamentals are the deep familiarity with the code and its constraints that lets you tell good output from plausible output. The more you do the first, the less raw material accumulates for the second. That isn't a paradox to be dissolved with a slogan, it's a real trade that has to be made on purpose.</p>
+
+                    <p>The way I've come to think about it is that verification capacity sets the ceiling. You can delegate about as much as you can check — and check in the sense of something that fails when a property is violated, not in the sense of reading a diff and nodding. Which puts the order of operations somewhere unglamorous: write the constraints down where an agent can read them and where they outlive the session, put validation behind one command that rebuilds from source and returns an exit status, make the acceptance tests something the worker can't edit. Then increase how much you hand over, until the checks stop catching what matters.</p>
+
+                    <p>Which side of the line a piece of work falls on is usually obvious once you ask what the check would be:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Check is cheap and sharp — delegate hard</th>
+                                <th>Check is expensive or subjective — keep the judgement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Builds and links across the compilers you support</td>
+                                <td>An interface other teams will depend on for years</td>
+                            </tr>
+                            <tr>
+                                <td>Clean under sanitizers with the suite running</td>
+                                <td>A security or trust boundary</td>
+                            </tr>
+                            <tr>
+                                <td>Benchmark stays under a stated threshold</td>
+                                <td>A metric definition that encodes a product decision</td>
+                            </tr>
+                            <tr>
+                                <td>Output matches a golden file</td>
+                                <td>Anything whose failure shows up in front of a user rather than in a test</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>On the right-hand side, an agent producing something plausible tells you nothing about whether it's right.</p>
+                </section>
+
+                <section id="closing" class="blog-section">
+                    <h2>Closing</h2>
+
+                    <p>Ranked by how hard they are to acquire rather than how much they matter, the order is close to the reverse of how much attention each one gets. The ranking tracks the feedback loop almost exactly:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Skill</th>
+                                <th>How fast the loop answers</th>
+                                <th>Cost to acquire</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Using coding agents</td>
+                                <td>Same day — the suite goes green or it doesn't</td>
+                                <td>Low. Weeks of deliberate experimentation; the tooling teaches you</td>
+                            </tr>
+                            <tr>
+                                <td>Building AI applications</td>
+                                <td>Days, once an eval set exists</td>
+                                <td>Moderate. A known discipline that transfers intact from ML</td>
+                            </tr>
+                            <tr>
+                                <td>Fundamentals</td>
+                                <td>Immediate — compiler, sanitizer, profiler</td>
+                                <td>As learnable as ever, but the path that used to produce it is closing</td>
+                            </tr>
+                            <tr>
+                                <td>Shaping the build</td>
+                                <td>Months, a handful of samples a year, confounded</td>
+                                <td>High. The one that separates people over a career</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>The single thing I'd act on is improving what you can check, since that raises the delegation ceiling and frees attention for the judgement that's actually scarce. That would have been reasonable advice ten years ago too.</p>
+
+                    <p>What I keep coming back to is the junior question. If the loop that produced this judgement was writing bad code and living with it, and that loop is now optional, it isn't obvious what replaces it. Practising unassisted feels like the right shape of answer but it depends on people choosing the slower path while the fast one is right there. I don't know how that resolves.</p>
+
+                    <div class="note-box">
+                        <h3>Source</h3>
+                        <p>Andrew Ng, <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map">The AI Engineering Skills Map</a>, <em>The Batch</em>, DeepLearning.AI, 14 August 2026. The four skills are his; the readings and opinions above are mine. Related: <a href="ai-spec-driven-development-workflow.html">AI Spec-Driven Development</a> and <a href="ai-coding-workflows-cloud-to-local.html">AI Coding Workflows: From Cloud to Local</a>.</p>
+                    </div>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
