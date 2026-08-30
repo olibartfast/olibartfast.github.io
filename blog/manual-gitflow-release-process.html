@@ -1,0 +1,613 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Cutting a Release by Hand: Gitflow with Plain Git - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="The manual git commands behind a Gitflow release: branch model, release and hotfix branches, tagging, merging back into develop, a checklist, and how to recover when a step is missed."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .code-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        code {
+            font-size: 1.05rem;
+        }
+
+        .table-of-contents,
+        .note-box,
+        .warning-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents h3,
+        .note-box h3,
+        .warning-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .table-of-contents li {
+            margin: 8px 0;
+        }
+
+        .table-of-contents a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .table-of-contents a:hover {
+            color: #007bff;
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 1rem;
+        }
+
+        /* Layout only — border and palette come from the cyberpunk table pass
+           in main.css, which already styles .blog-scrollable-content th/td. */
+        .workflow-table th,
+        .workflow-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .branch-diagram {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 18px;
+            margin: 24px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #f8f8f2;
+            white-space: pre;
+        }
+
+        /* main.css sets list-style-type: disc on .blog-scrollable-content ul;
+           outrank it so the checkboxes are the only marker. */
+        .blog-scrollable-content ul.checklist {
+            list-style: none;
+            padding-left: 8px;
+        }
+
+        .checklist li {
+            margin: 8px 0;
+        }
+
+        .checklist li::before {
+            content: "\2610";
+            margin-right: 10px;
+            color: #007bff;
+        }
+
+        /* main.css recolours .note-box/.tips-box headings but not .warning-box.
+           Match them here. */
+        .blog-scrollable-content .warning-box {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            border-left: 3px solid #ff2e88;
+            border-radius: 0;
+            box-shadow: -1px 0 14px rgba(255, 46, 136, 0.22);
+            color: #c4cfe0;
+        }
+
+        .blog-scrollable-content .warning-box h3 {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left" aria-label="Back to home">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>Cutting a Release by Hand: Gitflow with Plain Git</h1>
+            <p class="post-meta">What <code>git flow release finish</code> actually does, one command at a time</p>
+            <p class="post-meta">Posted on August 30, 2026</p>
+            <p class="post-meta">Read time: 14 mins | Tags: Git, Release Engineering, Gitflow, Workflow</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>The <a href="https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow">Gitflow workflow</a> is usually presented through the <code>git-flow</code> CLI extension, which is fine until the day it is not installed, or the release has to happen from a CI runner, or something goes wrong halfway through and you need to know which of the six things <code>release finish</code> does had already happened.</p>
+
+                <p>Every step below is raw <code>git</code>. No extension required. The <code>git flow</code> equivalents are in <a href="#appendix-a">Appendix A</a> for anyone who does have it installed and just wants to know what it wraps.</p>
+
+                <p>Two details account for most of the release bugs I have seen, so they are worth stating before the mechanics:</p>
+
+                <ul>
+                    <li>A release branch merges into <strong>both</strong> <code>main</code> and <code>develop</code>. Skipping the second merge silently loses the version bump and every stabilisation fix.</li>
+                    <li>The tag <em>is</em> the release. Everything else — the branch, the merge commit, the changelog — is bookkeeping around a single annotated tag on <code>main</code>.</li>
+                </ul>
+
+                <div class="table-of-contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#branch-model">1. The Branch Model</a></li>
+                        <li><a href="#setup">2. One-Time Repository Setup</a></li>
+                        <li><a href="#release">3. Cutting a Release</a></li>
+                        <li><a href="#hotfix">4. Hotfix Releases</a></li>
+                        <li><a href="#features">5. Feature Branches, for Context</a></li>
+                        <li><a href="#versioning">6. Versioning</a></li>
+                        <li><a href="#checklist">7. The Release Checklist</a></li>
+                        <li><a href="#recovery">8. Recovering from Mistakes</a></li>
+                        <li><a href="#appendix-a">Appendix A — <code>git flow</code> CLI Equivalents</a></li>
+                        <li><a href="#appendix-b">Appendix B — Quick Reference</a></li>
+                    </ul>
+                </div>
+
+                <section id="branch-model" class="blog-section">
+                    <h2>1. The Branch Model</h2>
+
+                    <p>Five kinds of branch, two of which live forever:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Branch</th>
+                                <th>Lives</th>
+                                <th>Branches from</th>
+                                <th>Merges into</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>main</code></td>
+                                <td>forever</td>
+                                <td>—</td>
+                                <td>—</td>
+                                <td>Official release history. Every commit is a tagged release.</td>
+                            </tr>
+                            <tr>
+                                <td><code>develop</code></td>
+                                <td>forever</td>
+                                <td><code>main</code> (once)</td>
+                                <td>—</td>
+                                <td>Integration branch. Holds the complete history of features.</td>
+                            </tr>
+                            <tr>
+                                <td><code>feature/*</code></td>
+                                <td>temporary</td>
+                                <td><code>develop</code></td>
+                                <td><code>develop</code></td>
+                                <td>One new capability. Never touches <code>main</code>.</td>
+                            </tr>
+                            <tr>
+                                <td><code>release/*</code></td>
+                                <td>temporary</td>
+                                <td><code>develop</code></td>
+                                <td><code>main</code> <strong>and</strong> <code>develop</code></td>
+                                <td>Stabilise and bump the version. No new features.</td>
+                            </tr>
+                            <tr>
+                                <td><code>hotfix/*</code></td>
+                                <td>temporary</td>
+                                <td><code>main</code></td>
+                                <td><code>main</code> <strong>and</strong> <code>develop</code></td>
+                                <td>Urgent fix against production.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>The rules that actually matter:</p>
+
+                    <ul>
+                        <li><strong><code>main</code> only ever receives merges from <code>release/*</code> and <code>hotfix/*</code>.</strong> Never merge <code>develop</code> or a feature branch directly into <code>main</code>.</li>
+                        <li><strong>Every commit on <code>main</code> gets a version tag.</strong></li>
+                        <li><strong>A release branch merges into both long-lived branches</strong>, so the version bump and any stabilisation fixes survive.</li>
+                        <li>Once a release branch exists, <code>develop</code> is free again — the next cycle's features can land there while the release is being polished.</li>
+                    </ul>
+
+                    <div class="branch-diagram">main     ──●────────────────────●───────────●──   (tags: v1.0.0, v1.1.0, v1.1.1)
+            \                  /           /
+release      \        ●──●──●─/           /       release/1.1.0
+              \      /        \          /
+develop  ──●───●────●──────────●────●───●─────    (release fixes merged back)
+            \     /                 \
+feature      ●──●                    ●──●         feature/…</div>
+
+                    <p>That fork-and-rejoin shape on the release branch is the whole workflow in one picture. The branch leaves <code>develop</code>, collects the version bump and whatever the QA pass turns up, lands on <code>main</code> as a single revertable node, and then comes back down into <code>develop</code>.</p>
+                </section>
+
+                <section id="setup" class="blog-section">
+                    <h2>2. One-Time Repository Setup</h2>
+
+                    <p>Only needed if <code>develop</code> does not exist yet.</p>
+
+                    <pre class="code-snippet"><code>git clone &lt;repo-url&gt;
+cd &lt;repo&gt;
+
+# Create develop off main and publish it
+git checkout main
+git pull origin main
+git checkout -b develop
+git push -u origin develop</code></pre>
+
+                    <p>Optionally make <code>develop</code> the default branch on the host (GitHub, GitLab, Bitbucket) so pull requests target it automatically, and protect both long-lived branches.</p>
+                </section>
+
+                <section id="release" class="blog-section">
+                    <h2>3. Cutting a Release</h2>
+
+                    <p>Assume the next version is <code>1.1.0</code>. Substitute your own version everywhere.</p>
+
+                    <h3>3.1 Make sure <code>develop</code> is what you want to ship</h3>
+
+                    <pre class="code-snippet"><code>git checkout develop
+git pull origin develop
+git log --oneline main..develop      # review exactly what is going out</code></pre>
+
+                    <p>Everything intended for this release must already be merged into <code>develop</code>. Anything not merged yet <strong>waits for the next release</strong> — do not add features once the release branch is cut. That single rule is what makes the release branch stabilise instead of drifting.</p>
+
+                    <h3>3.2 Create the release branch</h3>
+
+                    <pre class="code-snippet"><code>git checkout -b release/1.1.0 develop
+git push -u origin release/1.1.0</code></pre>
+
+                    <p>From this moment <code>develop</code> is open for the <em>next</em> cycle's work.</p>
+
+                    <h3>3.3 Prepare the release on the branch</h3>
+
+                    <p>Only release-preparation commits belong here: version bumps, changelog, docs, and bug fixes found during testing. <strong>No new features.</strong></p>
+
+                    <pre class="code-snippet"><code># 1. Bump the version in whatever file holds it, e.g.:
+#      package.json / pyproject.toml / Cargo.toml / VERSION / CMakeLists.txt
+$EDITOR VERSION
+
+# 2. Update the changelog
+$EDITOR CHANGELOG.md
+
+git add -A
+git commit -m "Bump version to 1.1.0"
+git push</code></pre>
+
+                    <p>Then run the full test suite, build and QA against this branch. Fix problems by committing <strong>on the release branch</strong>:</p>
+
+                    <pre class="code-snippet"><code>git checkout release/1.1.0
+$EDITOR src/thing.c
+git commit -am "Fix off-by-one in thing parser"
+git push</code></pre>
+
+                    <h3>3.4 Merge the release into <code>main</code> and tag it</h3>
+
+                    <pre class="code-snippet"><code>git checkout main
+git pull origin main
+git merge --no-ff release/1.1.0 -m "Release 1.1.0"</code></pre>
+
+                    <p><code>--no-ff</code> is deliberate: it keeps an explicit merge commit, so the release is a single, revertable node in <code>main</code>'s history rather than a run of commits you would have to unpick individually.</p>
+
+                    <p>Tag the merge commit — this is the release artefact:</p>
+
+                    <pre class="code-snippet"><code>git tag -a v1.1.0 -m "Release 1.1.0"
+git push origin main
+git push origin v1.1.0</code></pre>
+
+                    <div class="note-box">
+                        <h3>Use annotated tags</h3>
+                        <p>Use an annotated (<code>-a</code>) or signed (<code>-s</code>) tag, not a lightweight one. Annotated tags carry the tagger, date and message, and are what <code>git describe</code> picks up — which is usually what ends up embedded in a build as its version string.</p>
+                    </div>
+
+                    <h3>3.5 Merge the release back into <code>develop</code></h3>
+
+                    <p>This is the step people forget. Without it, the version bump and any fixes made during stabilisation exist only on <code>main</code>, and will be clobbered by the next release.</p>
+
+                    <pre class="code-snippet"><code>git checkout develop
+git pull origin develop
+git merge --no-ff release/1.1.0 -m "Merge release 1.1.0 back into develop"
+git push origin develop</code></pre>
+
+                    <p>If this conflicts — usually only on the version file — resolve in favour of the release branch's content, then continue:</p>
+
+                    <pre class="code-snippet"><code>git status                 # see conflicted files
+$EDITOR &lt;conflicted-file&gt;
+git add &lt;conflicted-file&gt;
+git commit                 # accept the default merge message
+git push origin develop</code></pre>
+
+                    <h3>3.6 Delete the release branch</h3>
+
+                    <pre class="code-snippet"><code>git branch -d release/1.1.0
+git push origin --delete release/1.1.0</code></pre>
+
+                    <h3>3.7 Verify</h3>
+
+                    <pre class="code-snippet"><code>git checkout main
+git log --oneline -3
+git describe --tags        # should print v1.1.0
+git log --oneline main..develop   # release commits should NOT appear here</code></pre>
+
+                    <p>That last command is the cheap check on step 3.5. If the release commits still show up as "on develop but not on main", the merge back did not happen.</p>
+                </section>
+
+                <section id="hotfix" class="blog-section">
+                    <h2>4. Hotfix Releases</h2>
+
+                    <p>A hotfix branches off <code>main</code>, not <code>develop</code>, so an urgent fix ships without dragging in unreleased work. Assume production is <code>v1.1.0</code> and the fix is <code>1.1.1</code>.</p>
+
+                    <pre class="code-snippet"><code># 1. Branch from main
+git checkout main
+git pull origin main
+git checkout -b hotfix/1.1.1
+git push -u origin hotfix/1.1.1
+
+# 2. Fix the bug and bump the patch version
+$EDITOR src/broken.c
+$EDITOR VERSION CHANGELOG.md
+git commit -am "Fix crash on empty config; bump version to 1.1.1"
+git push
+
+# 3. Merge into main and tag
+git checkout main
+git merge --no-ff hotfix/1.1.1 -m "Hotfix 1.1.1"
+git tag -a v1.1.1 -m "Hotfix 1.1.1"
+git push origin main
+git push origin v1.1.1
+
+# 4. Merge into develop as well, so the fix is not lost
+git checkout develop
+git pull origin develop
+git merge --no-ff hotfix/1.1.1 -m "Merge hotfix 1.1.1 into develop"
+git push origin develop
+
+# 5. Clean up
+git branch -d hotfix/1.1.1
+git push origin --delete hotfix/1.1.1</code></pre>
+
+                    <div class="warning-box">
+                        <h3>Exception: an open release branch</h3>
+                        <p>If a release branch is currently open, merge the hotfix into the <strong>release branch</strong> instead of <code>develop</code>. The release branch will carry the fix into <code>develop</code> when it is merged back in step 3.5. Merging into both produces a duplicated fix and a conflict later.</p>
+                    </div>
+                </section>
+
+                <section id="features" class="blog-section">
+                    <h2>5. Feature Branches, for Context</h2>
+
+                    <p>Features never interact with a release directly; they land in <code>develop</code> first.</p>
+
+                    <pre class="code-snippet"><code>git checkout develop
+git pull origin develop
+git checkout -b feature/user-avatars
+# ...commit work...
+git push -u origin feature/user-avatars
+
+# When approved (via PR, or locally):
+git checkout develop
+git pull origin develop
+git merge --no-ff feature/user-avatars
+git push origin develop
+git branch -d feature/user-avatars
+git push origin --delete feature/user-avatars</code></pre>
+                </section>
+
+                <section id="versioning" class="blog-section">
+                    <h2>6. Versioning</h2>
+
+                    <p>Use <a href="https://semver.org/">Semantic Versioning</a> — <code>MAJOR.MINOR.PATCH</code>:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Means</th>
+                                <th>Usually ships via</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>MAJOR</strong></td>
+                                <td>Incompatible API changes</td>
+                                <td><code>release/*</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>MINOR</strong></td>
+                                <td>Backwards-compatible functionality</td>
+                                <td><code>release/*</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>PATCH</strong></td>
+                                <td>Backwards-compatible bug fixes</td>
+                                <td><code>hotfix/*</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Tags are prefixed with <code>v</code> (<code>v1.1.0</code>); branches are not (<code>release/1.1.0</code>). Worth being consistent about, because <code>git describe</code> output and release-note tooling both key off the tag name.</p>
+                </section>
+
+                <section id="checklist" class="blog-section">
+                    <h2>7. The Release Checklist</h2>
+
+                    <p>Copy this into the release ticket or PR description.</p>
+
+                    <ul class="checklist">
+                        <li>Everything intended for the release is merged into <code>develop</code></li>
+                        <li><code>git log --oneline main..develop</code> reviewed</li>
+                        <li><code>release/X.Y.Z</code> created from <code>develop</code> and pushed</li>
+                        <li>Version bumped in all version-bearing files</li>
+                        <li><code>CHANGELOG.md</code> updated</li>
+                        <li>Full test suite green on the release branch</li>
+                        <li>Build and packaging verified from the release branch</li>
+                        <li>Merged into <code>main</code> with <code>--no-ff</code></li>
+                        <li>Annotated tag <code>vX.Y.Z</code> created <strong>and pushed</strong> (<code>git push origin vX.Y.Z</code>)</li>
+                        <li>Merged back into <code>develop</code> with <code>--no-ff</code></li>
+                        <li>Release branch deleted locally and on the remote</li>
+                        <li>Release notes published on the host, from the tag</li>
+                        <li>Artifacts published — registry, images, binaries — if applicable</li>
+                    </ul>
+                </section>
+
+                <section id="recovery" class="blog-section">
+                    <h2>8. Recovering from Mistakes</h2>
+
+                    <h3>Forgot to merge back into <code>develop</code></h3>
+
+                    <p>Just do it now. The release branch may already be deleted, so merge the tag instead:</p>
+
+                    <pre class="code-snippet"><code>git checkout develop
+git merge --no-ff v1.1.0
+git push origin develop</code></pre>
+
+                    <h3>Tagged the wrong commit, tag not yet pushed</h3>
+
+                    <pre class="code-snippet"><code>git tag -d v1.1.0
+git tag -a v1.1.0 -m "Release 1.1.0" &lt;correct-sha&gt;</code></pre>
+
+                    <h3>Tagged the wrong commit, tag already pushed</h3>
+
+                    <p>Prefer cutting <code>v1.1.1</code> over moving a published tag; anyone who already fetched the old tag keeps it, and no amount of remote surgery changes that. If you must:</p>
+
+                    <pre class="code-snippet"><code>git push origin :refs/tags/v1.1.0     # delete remote tag
+git tag -d v1.1.0
+git tag -a v1.1.0 -m "Release 1.1.0" &lt;correct-sha&gt;
+git push origin v1.1.0
+# then tell everyone to run: git fetch --tags --force</code></pre>
+
+                    <h3>Bad release merged into <code>main</code></h3>
+
+                    <p>Revert the merge commit, which keeps history honest, then fix forward on a new hotfix branch:</p>
+
+                    <pre class="code-snippet"><code>git checkout main
+git revert -m 1 &lt;merge-commit-sha&gt;
+git push origin main</code></pre>
+
+                    <p><code>-m 1</code> selects the first parent — the state of <code>main</code> before the release — as the mainline to revert back to.</p>
+
+                    <h3>Feature accidentally committed on the release branch</h3>
+
+                    <p>Move it to <code>develop</code> and take it back off the release:</p>
+
+                    <pre class="code-snippet"><code>git checkout develop
+git cherry-pick &lt;sha&gt;
+git push origin develop
+
+git checkout release/1.1.0
+git revert &lt;sha&gt;
+git push</code></pre>
+                </section>
+
+                <section id="appendix-a" class="blog-section">
+                    <h2>Appendix A — <code>git flow</code> CLI Equivalents</h2>
+
+                    <p>If the <a href="https://github.com/nvie/gitflow">git-flow extension</a> is installed, these wrap the manual steps above:</p>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Manual steps</th>
+                                <th><code>git flow</code></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>§2 setup</td>
+                                <td><code>git flow init</code></td>
+                            </tr>
+                            <tr>
+                                <td>§3.2 create release</td>
+                                <td><code>git flow release start 1.1.0</code></td>
+                            </tr>
+                            <tr>
+                                <td>§3.4–3.6 merge, tag, merge back, delete</td>
+                                <td><code>git flow release finish 1.1.0</code></td>
+                            </tr>
+                            <tr>
+                                <td>§4 step 1</td>
+                                <td><code>git flow hotfix start 1.1.1</code></td>
+                            </tr>
+                            <tr>
+                                <td>§4 steps 3–5</td>
+                                <td><code>git flow hotfix finish 1.1.1</code></td>
+                            </tr>
+                            <tr>
+                                <td>§5 create feature</td>
+                                <td><code>git flow feature start user-avatars</code></td>
+                            </tr>
+                            <tr>
+                                <td>§5 merge feature</td>
+                                <td><code>git flow feature finish user-avatars</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Note that <code>finish</code> does <strong>not</strong> push — follow it with:</p>
+
+                    <pre class="code-snippet"><code>git push origin main develop --tags</code></pre>
+                </section>
+
+                <section id="appendix-b" class="blog-section">
+                    <h2>Appendix B — Quick Reference</h2>
+
+                    <pre class="code-snippet"><code># Release
+git checkout -b release/X.Y.Z develop
+# ...bump version, changelog, fixes, test...
+git checkout main   &amp;&amp; git merge --no-ff release/X.Y.Z
+git tag -a vX.Y.Z -m "Release X.Y.Z"
+git checkout develop &amp;&amp; git merge --no-ff release/X.Y.Z
+git push origin main develop vX.Y.Z
+git branch -d release/X.Y.Z &amp;&amp; git push origin --delete release/X.Y.Z
+
+# Hotfix
+git checkout -b hotfix/X.Y.Z main
+# ...fix, bump patch version...
+git checkout main   &amp;&amp; git merge --no-ff hotfix/X.Y.Z
+git tag -a vX.Y.Z -m "Hotfix X.Y.Z"
+git checkout develop &amp;&amp; git merge --no-ff hotfix/X.Y.Z
+git push origin main develop vX.Y.Z
+git branch -d hotfix/X.Y.Z &amp;&amp; git push origin --delete hotfix/X.Y.Z</code></pre>
+
+                    <div class="note-box">
+                        <h3>Source</h3>
+                        <p>This post is the expanded version of a gist I keep as a working reference: <a href="https://gist.github.com/olibartfast/1b917c2aaabbe187a7901507a5e04abf">Manual Release Process (Gitflow)</a>. Background reading: Atlassian's <a href="https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow">Gitflow workflow</a> tutorial and Vincent Driessen's original <a href="https://nvie.com/posts/a-successful-git-branching-model/">A successful Git branching model</a>, which the model comes from.</p>
+                    </div>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
