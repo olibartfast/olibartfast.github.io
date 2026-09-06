@@ -67,8 +67,6 @@
 
                 <p>My usual reaction to a list like this is that every item on it is true and none of it is usable. Nobody reads "software engineering fundamentals matter" and does anything differently. But this one stuck with me for a few days, mostly because two of the four items pull against each other and the article doesn't say so.</p>
 
-                <p>His follow-up letter in <a href="https://www.deeplearning.ai/the-batch/issue-367">issue 367</a> of <em>The Batch</em>, on 21 August, fleshes out the first of the four, breaking it into six sub-skills. I've folded that into the section below rather than treating it as a separate post, because it doesn't change the shape of the argument — it sharpens one corner of it.</p>
-
                 <p>Notes on each, then the part I think is missing.</p>
 
                 <section id="evals" class="blog-section">
@@ -76,63 +74,11 @@
 
                     <p>Ng's framing is that AI systems produce unpredictable outputs, and that this is what makes building them different: you can't plan the process in advance, so you build a piece of it, look at what came out, and let the result decide the next step. The stated goal is to get reliable systems out of unreliable components — which is a fair description of the job and not a pleasant one.</p>
 
-                    <p>The follow-up letter splits this item into six: LLM foundations, grounding models with data, building agentic systems, evaluation-driven development, operating in production, and machine learning foundations. Read quickly, it's another list of true things. Read slowly, the six aren't the same kind of object at all — three are menus of technique you can look up, one is a discipline, one is operations, and one is the field that was already there.</p>
-
-                    <table class="workflow-table">
-                        <thead>
-                            <tr>
-                                <th>Sub-skill</th>
-                                <th>What it actually is</th>
-                                <th>The part that gets skipped</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>LLM foundations</td>
-                                <td>Model behaviour: tokenisation, context window, cache hits, knowledge cutoff, reasoning effort, sampling, tool calling</td>
-                                <td>Knowing when the model will fail, not just what it can do</td>
-                            </tr>
-                            <tr>
-                                <td>Grounding with data</td>
-                                <td>A representation choice — vector index, knowledge graph, semantic layer over records — plus the pipeline that keeps it fresh</td>
-                                <td>Deciding what sits in the prompt versus what the model fetches on demand</td>
-                            </tr>
-                            <tr>
-                                <td>Agentic systems</td>
-                                <td>Architecture: what to chain, what to parallelise, what stays ordinary code, which tools the loop can reach</td>
-                                <td>Guardrails, adversarial input, exfiltration paths</td>
-                            </tr>
-                            <tr>
-                                <td>Evaluation-driven development</td>
-                                <td>A discipline, not a library</td>
-                                <td>Error analysis on the actual failures</td>
-                            </tr>
-                            <tr>
-                                <td>Operating in production</td>
-                                <td>Ops with an extra failure mode, plus cost and latency as first-class budgets</td>
-                                <td>Drift, and testing calibrated to what a mistake costs</td>
-                            </tr>
-                            <tr>
-                                <td>ML foundations</td>
-                                <td>The field underneath the models</td>
-                                <td>Bias/variance and error analysis as mental frameworks, not trivia</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <p>The first three are the easy half, and they are where most of the attention goes. Wiring a retrieval step to a prompt is an afternoon. What isn't an afternoon is the decision underneath it: which representation actually fits the data and the queries. RAG over a vector index was the answer most teams reached for first, and it has quietly become the default answer to all of them, including the ones where a join over structured records would be exact and a nearest-neighbour lookup is a guess. Ng's phrasing — that grounding is now a menu — is the useful part. If your customer data lives in tables, embedding it so a model can approximately find it again is a strange thing to do on purpose.</p>
-
-                    <p>The harder question, for all six, is whether you can say how often the system is wrong, in what way, and whether that has changed since last week.</p>
+                    <p>The question I would start with is whether you can say how often the system is wrong, in what way, and whether that has changed since last week.</p>
 
                     <p>Anyone coming from machine learning already has this. In vision work you don't ship a detector because the demo looked good. You have a held-out set that resembles deployment rather than whatever was convenient to collect, numbers broken down per class and per condition so a regression has an address, and a fixed protocol so that "better" is a claim rather than an impression. Then you look at the failures. Not the aggregate — the actual images, in batches, sorted into causes before you touch anything.</p>
 
                     <p>None of that changes when the output is tokens instead of boxes. The labels are harder to get and the failures are more varied, but the loop is the same. What changes is the pull away from it. Prompt-tweaking gives you the feeling of progress in about four seconds, and evals give you nothing for a day and a half, so people tweak. The habit worth keeping is the boring one: take twenty failures, group them by cause, fix the largest group. That hour is usually the highest-leverage hour available and it is almost never scheduled.</p>
-
-                    <p>Ng puts this more strongly than I expected: in his experience the trait that most separates people who are good at building AI systems from people who aren't is whether they can run a disciplined evals and error-analysis loop, and he calls it tricky to master because the right approach changes with the project and with the project's stage. Both halves match what I've seen. Early on, twenty examples looked at by hand beat any harness, because you don't yet know what to measure. Later, the same twenty examples are worthless and you need a set large enough that a two-point move means something. Teams get stuck by keeping the early-stage answer too long, or by building the late-stage machinery before they know what it should count.</p>
-
-                    <p>The item on his list I'd underline is evaluating the evals. A judge prompt that agrees with you on the cases you built it from and drifts everywhere else is worse than no eval, because it produces numbers. The cheap defence is a small hand-labelled set kept aside to score the scorer, and re-scoring it whenever the judge or the model behind it changes. Nobody does this until an eval has lied to them once.</p>
-
-                    <p>Machine learning foundations, sixth on the list, reads like a legacy entry — the field the author came from, kept there out of loyalty. The detector above is why I don't think it is. Ng's claim is that every engineer he knows who is good at building with LLMs also understands ML at some depth, and the reason isn't that you'll be training models. It's that bias/variance, error analysis and thinking about data as something you engineer rather than something you have are the frameworks for working with any system whose output is uncertain. Without them, "the model is wrong sometimes" isn't a diagnosis and there's nowhere to go next. With them it decomposes into questions with different answers: is the failure in the data, the retrieval, the instructions, or the metric.</p>
 
                     <p>The "deploying" half of that heading matters too, and it splits into two problems that get confused. A hosted model is an unreliable network dependency with latency variance, rate limits and a per-call cost, and everything the profession knows about those applies unchanged: timeouts, retries with backoff, circuit breakers, cost budgets, contract tests against a pinned version.</p>
 
@@ -300,7 +246,7 @@
 
                     <div class="note-box">
                         <h3>Source</h3>
-                        <p>Andrew Ng, <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map">The AI Engineering Skills Map</a>, <em>The Batch</em>, DeepLearning.AI, 14 August 2026, and his follow-up letter in <a href="https://www.deeplearning.ai/the-batch/issue-367">issue 367</a> of <em>The Batch</em>, 21 August 2026, which expands the first skill into the six sub-skills discussed above. The skills map is his; the readings and opinions above are mine. Related: <a href="ai-spec-driven-development-workflow.html">AI Spec-Driven Development</a> and <a href="ai-coding-workflows-cloud-to-local.html">AI Coding Workflows: From Cloud to Local</a>.</p>
+                        <p>Andrew Ng, <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map">The AI Engineering Skills Map</a>, <em>The Batch</em>, DeepLearning.AI, 14 August 2026. The skills map is his; the readings and opinions above are mine. Related: <a href="ai-spec-driven-development-workflow.html">AI Spec-Driven Development</a> and <a href="ai-coding-workflows-cloud-to-local.html">AI Coding Workflows: From Cloud to Local</a>.</p>
                     </div>
                 </section>
             </article>
