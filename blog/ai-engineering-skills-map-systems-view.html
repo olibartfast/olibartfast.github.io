@@ -1,0 +1,377 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>The AI Engineering Skills Map, Read from the Systems Side - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="A working summary of Andrew Ng's four-skill AI Engineering Skills Map, and what each skill looks like when the product is a GPU inference pipeline on an edge device rather than an LLM web application."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            background: #2b2b2b;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .code-snippet code {
+            display: block;
+            line-height: 1.5;
+            color: #f8f8f2;
+        }
+
+        code {
+            font-size: 1.05rem;
+        }
+
+        .table-of-contents,
+        .note-box,
+        .warning-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents h3,
+        .note-box h3,
+        .warning-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .table-of-contents li {
+            margin: 8px 0;
+        }
+
+        .table-of-contents a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .table-of-contents a:hover {
+            color: #007bff;
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 1rem;
+        }
+
+        /* Layout only — border and palette come from the cyberpunk table pass
+           in main.css, which already styles .blog-scrollable-content th/td. */
+        .workflow-table th,
+        .workflow-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .workflow-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin: 24px 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+
+        .workflow-flow span {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            color: #c4cfe0;
+            padding: 8px 12px;
+        }
+
+        .workflow-flow b {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+
+        /* main.css sets list-style-type: disc on .blog-scrollable-content ul;
+           outrank it so the checkboxes are the only marker. */
+        .blog-scrollable-content ul.checklist {
+            list-style: none;
+            padding-left: 8px;
+        }
+
+        .checklist li {
+            margin: 8px 0;
+        }
+
+        .checklist li::before {
+            content: "\2610";
+            margin-right: 10px;
+            color: #007bff;
+        }
+
+        /* main.css recolours .note-box/.tips-box headings but not .warning-box.
+           Match them here. */
+        .blog-scrollable-content .warning-box {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            border-left: 3px solid #ff2e88;
+            border-radius: 0;
+            box-shadow: -1px 0 14px rgba(255, 46, 136, 0.22);
+            color: #c4cfe0;
+        }
+
+        .blog-scrollable-content .warning-box h3 {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left" aria-label="Back to home">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>The AI Engineering Skills Map, Read from the Systems Side</h1>
+            <p class="post-meta">Four skills, twenty sub-skills, and what they mean when the product is a GPU pipeline on an edge device</p>
+            <p class="post-meta">Posted on September 14, 2026</p>
+            <p class="post-meta">Read time: 13 mins | Tags: AI Engineering, Career, Coding Agents, Edge AI, MLOps</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>Between August 14 and September 11, 2026, Andrew Ng published a five-part series in <em>The Batch</em> laying out DeepLearning.AI's <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map">AI Engineering Skills Map</a>: four top-level skills, each broken into four to six sub-skills, derived from an analysis of more than 10,000 job postings plus structured interviews with engineers, hiring managers and recruiters, and survey data.</p>
+
+                <p>Most skill taxonomies are marketing. This one is worth reading for two reasons. The first is the method: it is a description of what the market is actually hiring for, not a wish list. The second is a framing choice made in the first letter and easy to skip past — the series is about <strong>AI engineering skills</strong>, not the <strong>AI engineer job title</strong>. The analogy offered is cloud computing: nearly every developer needs cloud skills, while comparatively few carry "cloud engineer" on a badge. The claim is that the same thing is happening here, and it applies to full-stack, data, DevOps, ML and embedded engineers alike.</p>
+
+                <p>This article does two things. The first half is a condensed pass through the map, because the source material runs to five letters and the sub-skill lists are the useful part. The second half is the part I care about more: what each of the four skills looks like when the artifact you ship is not an LLM chat application but a real-time inference pipeline pinned to a fixed power budget. The map is written mostly in the vocabulary of LLM application development. That does not make it wrong for systems work — but several of the sub-skills change shape considerably on the way down to the metal, and one or two of them get harder rather than easier.</p>
+
+                <div class="note-box">
+                    <h3>Summary in one line</h3>
+                    <p>Code generation is commoditising fastest. What stays scarce is knowing which tradeoffs exist, deciding what belongs in the spec, and being able to prove that the result works.</p>
+                </div>
+
+                <div class="table-of-contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#the-map">1. The Map at a Glance</a></li>
+                        <li><a href="#applications">2. Building and Deploying AI Applications</a></li>
+                        <li><a href="#fundamentals">3. Software Engineering Fundamentals</a></li>
+                        <li><a href="#agents">4. Using Coding Agents</a></li>
+                        <li><a href="#shaping">5. Shaping the Build</a></li>
+                        <li><a href="#systems-side">6. The Same Map, Read from the Systems Side</a></li>
+                        <li><a href="#audit">7. Use It as an Audit, Not a Reading List</a></li>
+                        <li><a href="#conclusion">Conclusion</a></li>
+                    </ul>
+                </div>
+
+                <section id="the-map" class="blog-section">
+                    <h2>1. The Map at a Glance</h2>
+
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Skill</th>
+                                <th>The claim</th>
+                                <th>Sub-skills</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Building and deploying AI applications</td>
+                                <td>Getting reliable systems out of unreliable components</td>
+                                <td>6</td>
+                            </tr>
+                            <tr>
+                                <td>Software engineering fundamentals</td>
+                                <td>Knowing which tradeoffs exist so you can steer them</td>
+                                <td>5</td>
+                            </tr>
+                            <tr>
+                                <td>Using coding agents</td>
+                                <td>Directing, bounding and verifying agent work</td>
+                                <td>5</td>
+                            </tr>
+                            <tr>
+                                <td>Shaping the build</td>
+                                <td>Deciding what goes in the spec, not just implementing it</td>
+                                <td>4</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>The thread connecting all four is stated in the first letter: given a clear specification, coding agents are getting good at delivering to it, so engineering value is migrating toward deciding what belongs in the specification. Continuous learning is named as the substrate under all of it, which in a series this length reads less like a closing platitude and more like an admission that the map itself has a short half-life.</p>
+                </section>
+
+                <section id="applications" class="blog-section">
+                    <h2>2. Building and Deploying AI Applications</h2>
+
+                    <p>The root cause of everything in this section is that AI components have unpredictable output. You do not know in advance what an LLM will emit, or what a trained model will predict on an input it has not seen. That single property is why building AI systems resists upfront planning: you build a piece, inspect it, decide the next move, and repeat, with each step shaped by what the last one revealed. The letter's framing is that the core competence is <em>deciding well what to do next</em>, and everything below exists to serve that decision.</p>
+
+                    <p>Six sub-skills:</p>
+
+                    <ul>
+                        <li><strong>LLM foundations</strong> — tokenisation and generation mechanics, failure modes, multimodal choices, context-window tradeoffs, cache behaviour, knowledge cutoffs, reasoning effort, sampling parameters, tool calling. Enough grounding to choose a model or a mix of models, and to recognise when fine-tuning or self-hosting is justified.</li>
+                        <li><strong>Grounding models with data</strong> — vector-search RAG was the opening move, not the whole game. What to put in the prompt versus what the model should fetch on demand through tools; which representation fits the data (vector index, knowledge graph, semantic layer over structured records); converting documents, PDFs and images into model-ready inputs; keeping the pipeline fresh.</li>
+                        <li><strong>Building agentic systems</strong> — the range from a fixed sequence of calls to a harness where the model chooses its own next step. Architecture, chaining versus parallelism, where code belongs versus the model, tool surface, memory architecture, long-session context, single versus multi-agent. Then the unglamorous half: guardrails, adversarial input, exfiltration risk, governance.</li>
+                        <li><strong>Evaluation-driven development</strong> — singled out as the trait that most distinguishes people who are genuinely good at this. A disciplined evals and error-analysis loop keeps effort aimed at directions likely to pay. Explicitly called hard to master, because the right approach shifts by project and by project stage.</li>
+                        <li><strong>Operating in production</strong> — observability on real traffic, drift detection, incident response including prompt injection. Regression testing needs more statistical evaluation than traditional software, with test effort scaled to the cost of being wrong. Cost and latency work via model selection, distillation, and workflow simplification.</li>
+                        <li><strong>Machine learning foundations</strong> — the letter's claim is that every strong LLM builder also understands ML and deep learning to some depth. Model tradeoffs across accuracy, training time and inference time; data engineering for training and evaluation; and bias/variance and error analysis as the mental frameworks for reasoning about anything with uncertain output.</li>
+                    </ul>
+                </section>
+
+                <section id="fundamentals" class="blog-section">
+                    <h2>3. Software Engineering Fundamentals</h2>
+
+                    <p>The argument here is the one I find most defensible in the whole series. Even when an agent writes every line, fundamentals are what let you steer the tradeoffs — and, more to the point, what let you notice that a tradeoff exists at all. Someone vibe coding without them can ship something that works, while the agent quietly makes poor calls on latency, availability, consistency, reliability, maintainability, simplicity and cost. The developer never steered, because they never knew there was anything to steer.</p>
+
+                    <ul>
+                        <li><strong>Building full-stack applications</strong> — agents let previously specialised developers work across the stack, but the concepts still have to be in your head: UI components, caching, rendering, API design, auth, state and session management, async processing, persistence, testing, security, accessibility.</li>
+                        <li><strong>Managing data</strong> — given its own section because data is the foundation and the layer hardest to change, agent-assisted migrations notwithstanding. Access patterns drive what you store and for how long; the data model and storage type drive speed, scalability, availability and cost. The sharpest observation in the letter is here: your AI system draws its context from the data layer, so a poor data architecture means the model does not know what it does not know.</li>
+                        <li><strong>Designing system architectures</strong> — platform, frontend/backend boundary, decomposition, state placement, monolith versus microservices, stack selection. And a point worth underlining: the right architecture is phase-dependent. What suits a prototype does not suit the first production system, which does not suit scale.</li>
+                        <li><strong>Making systems secure and reliable</strong> — test strategy and coverage, designing for failure (rate limits, graceful degradation, small blast radius), and "shift left" security. AI tooling can scan code, check dependencies for supply-chain injection and audit cloud configuration, but interpreting the output still takes security knowledge.</li>
+                        <li><strong>Scaling and operating in production</strong> — deployment environments, release strategy, CI/CD, IaaS, then observability, alerting, incident management, and the scaling levers. Plus the hygiene that lets a system keep evolving: version control, code review, dependency maintenance, technical-debt management.</li>
+                    </ul>
+
+                    <p>Memorising syntax is becoming obsolete. Understanding how software works is not.</p>
+                </section>
+
+                <section id="agents" class="blog-section">
+                    <h2>4. Using Coding Agents</h2>
+
+                    <p>Named as the fastest-moving of the four, since both harnesses and models improve in strides across proprietary agents (Claude Code, Codex, Cursor) and open ones (OpenCode, Pi). The practical consequence is that this skill cannot be learned once — keeping current requires a standing experimentation habit, which is itself part of the skill.</p>
+
+                    <p>The workflow that emerged consistently across interviews:</p>
+
+                    <div class="workflow-flow" aria-label="Coding agent workflow">
+                        <span>Plan</span><b>→</b>
+                        <span>Spec</span><b>→</b>
+                        <span>Execute</span><b>→</b>
+                        <span>Verify</span><b>→</b>
+                        <span>Deploy</span><b>→</b>
+                        <span>Monitor</span>
+                    </div>
+
+                    <p>Structurally this is the same workflow as pre-agent software development. What changed is where the attention goes: much less on code, much more on deciding what to build, designing architecture, writing the spec and verifying output. Step durations vary enormously and steps get skipped — a throwaway greenfield prototype may specify itself in a prompt, while a brownfield system with real users will not — and part of the skill is knowing when a later step should send you back to an earlier one.</p>
+
+                    <ul>
+                        <li><strong>Directing the workflow</strong> — how much human versus agent effort per step, when to loop back, and the underlying tradeoffs of speed, cost, technical risk and human effort. Which critical work stays human-owned, and how to decompose work into verifiable steps.</li>
+                        <li><strong>Enabling agent autonomy</strong> — interactive back-and-forth versus delegating a large chunk versus setting a goal and letting it loop. Carrying context forward across build phases, including assumptions that changed mid-build. When to fan out parallel agents, and how to spread your own attention across concurrent sessions. Running agents safely with gated permissions.</li>
+                        <li><strong>Reviewing the work</strong> — agent output is uncertain in both directions: unexpected good ideas and unexpected bugs. Validation matched to the task, behavioural and functional; eval sets and LLM-as-a-judge for qualitative checks; deciding how much to automate so the agent can self-verify; and evaluating the tests themselves.</li>
+                        <li><strong>Customising the agent and its environment</strong> — skills, plugins and MCP servers, and pruning them when a new model makes them redundant. Hooks for repeatable steps. Standing context files (<code>AGENTS.md</code>, <code>CLAUDE.md</code>) carrying codebase knowledge, architectural assumptions, code style and data access patterns. Preserving state across sessions and parallel agents, and clearing out agent-generated debt.</li>
+                        <li><strong>Coding agent foundations</strong> — how retrieval, context windows, subagents and the harness-around-an-LLM structure actually work. This is what turns the agent from a black box into something diagnosable, so you can recognise the recurring failure modes: overengineering, losing rigour in the absence of explicit verification, stopping short of the goal, or taking destructive action against files and production data.</li>
+                    </ul>
+
+                    <div class="warning-box">
+                        <h3>The caveat worth quoting the loudest</h3>
+                        <p>The letter takes a direct swing at social-media discourse on this topic: long autonomous runs burning tens of millions of tokens are sometimes useful, but their practical value relative to cost has been amplified beyond reality. Most effective agent use is iterative, and skilled human intervention beats letting it run.</p>
+                    </div>
+                </section>
+
+                <section id="shaping" class="blog-section">
+                    <h2>5. Shaping the Build</h2>
+
+                    <p>The final letter's premise: your best work will not be implementing a specification someone else wrote. Before AI expanded what one developer could do, the industry settled into PMs and designers specifying, developers implementing, and sometimes a project manager owning the timeline. Those boundaries are blurring in both directions — developers take on parts of the product role, and PMs and designers with AI engineering skills start building. The speed argument is the point: when you can shape the build, you stop waiting on someone else to decide the next move.</p>
+
+                    <ul>
+                        <li><strong>Driving the build loop</strong> — write, get feedback, decide the next step, at the velocity AI now permits, with a bias for action. Concretely: when to throw up a prototype to test a technical concept, when to build an MVP to demonstrate value, when to add features, and when to invest in an enterprise-grade system. Shipping in small batches. Knowing when to gather information from users versus running a technical experiment. Weighed against product vision, project stage, technical feasibility, key risks, effort and budget.</li>
+                        <li><strong>Making product decisions</strong> — you do not become a PM, but you will decide things the specification does not cover, and if handed no specification you should be able to write one. Product sense to pick a direction that meets real needs, enough design sense that the result is pleasant rather than merely functional, and enough business sense for go-to-market, market size, unit economics and P&amp;L. All of it resting on user empathy, honed by whatever method fits — two or three informal interviews, surveys of hundreds, A/B tests, behavioural analysis across millions.</li>
+                        <li><strong>Communicating and leading</strong> — the same dynamic that turned specialised developers into full-stack ones opens the door wider: marketing, finance, legal, and whatever else touches the project. Also, because the technology moves fast, people outside engineering are trying to work out what it means for their jobs, and technical grounding lets you shape those conversations — including saying plainly what is not feasible.</li>
+                        <li><strong>High-agency ownership</strong> — many people, executives included, do not yet know what AI can do, which leaves a gap someone technical can fill. Spot problems, propose solutions, execute, respecting organisational constraints but without waiting for precise top-down direction. Own initiatives end to end, take accountability when things break, act under ambiguity, and measure yourself by value created rather than tasks completed.</li>
+                    </ul>
+                </section>
+
+                <section id="systems-side" class="blog-section">
+                    <h2>6. The Same Map, Read from the Systems Side</h2>
+
+                    <p>The map is written largely in the vocabulary of LLM application development: context windows, RAG, agent harnesses, LLM-as-a-judge. That is a fair reflection of where hiring volume sits. But a large amount of AI engineering work still ships as a C++ inference pipeline on a fixed device, and several of these sub-skills change shape on the way down. Six places where the translation is not one-to-one.</p>
+
+                    <h3>Unpredictability has a second axis</h3>
+
+                    <p>The map treats unpredictable output as the defining property of AI systems, and for a chat application that is the whole story. On a real-time pipeline there is a second axis: unpredictable <em>timing</em>. A model that is accurate on average and occasionally takes three times its median latency is a broken system, not a slightly worse one, if something downstream has a deadline. Tail latency, kernel launch overhead, memory-transfer stalls, thermal throttling and allocator behaviour are all sources of non-determinism that never appear in an eval score. Any honest version of "operating in production" for these systems has a p99 in it, not just an accuracy number.</p>
+
+                    <h3>Evals without a judge model</h3>
+
+                    <p>Evaluation-driven development is the sub-skill I would defend most strongly, and also the one whose standard toolkit transfers least. LLM-as-a-judge does not help you evaluate a detection or pose-estimation pipeline. What replaces it is older and more laborious: labelled data, slice-based error analysis, and a curated regression set of the cases that have actually bitten you — the low-light frames, the occlusions, the unusual camera angle in one deployment that no other site produces. The discipline the letter describes is exactly right. The instruments are different, and the cost of building them is mostly dataset work.</p>
+
+                    <h3>"Scaling" means the opposite thing</h3>
+
+                    <p>Scaling and operating in production, on the map, means load balancing, sharding, replication and autoscaling. On an edge device none of those levers exist. You have one fixed compute budget, a thermal envelope, and often no network you can rely on. Scaling means quantisation, layer fusion, batch shape decisions, memory pool reuse, and deciding what work is not worth doing at all. Distillation and model-choice optimisation appear in the letter as cost-reduction techniques for high-traffic services; on a device they are the difference between shipping and not shipping.</p>
+
+                    <h3>Data management becomes dataset management</h3>
+
+                    <p>The observation that a poor data architecture means the model does not know what it does not know is, if anything, more true here — it just points at a different artifact. The data layer for a perception system is the dataset: its versioning, its class balance, its labelling protocol, the provenance of each capture session, and the sensor calibration that makes yesterday's frames comparable to today's. Getting this wrong does not produce a slow query. It produces a model that fails silently on a condition nobody thought to capture.</p>
+
+                    <h3>Agent verification is harder, not easier</h3>
+
+                    <p>This is where I would push back on the optimism a little. The agent workflow rests on verification, and the map's examples of verification are things like testing user flows and collecting screenshots as evidence. A screenshot tells you nothing about whether a CUDA kernel is correct. Verifying generated systems code means numerical comparison against a reference implementation within tolerance, profiling before and after, checking for races the test suite will not surface, and confirming behaviour across more than one GPU architecture. That machinery is buildable, and once built it is genuinely powerful — the loop closes and the agent can check its own work. But the up-front cost of making agent output verifiable is much higher in this domain than in web development, and the failure mode the letter names — losing rigour when there is no explicit verification process — is correspondingly more dangerous.</p>
+
+                    <h3>The hardware choice is the specification</h3>
+
+                    <p>Shaping the build reads, in the original, like a product-management story: user needs, MVPs, go-to-market. In embedded and robotics work it arrives earlier and with harder edges. Choosing a compute module, a sensor, a thermal design or a power budget is a product decision that constrains everything downstream and becomes nearly impossible to revisit after the first board spin. Nobody is going to hand an engineer a pixel-perfect design for that. The "high-agency ownership" framing applies with full force, because there is frequently nobody else in the building who can reason about the tradeoff at all.</p>
+
+                    <p>None of this contradicts the map. It is the same four skills with different instruments, and the two sub-skills I would tell a systems engineer to take most seriously — evaluation-driven development and managing data — are exactly the two the map already puts at the centre.</p>
+                </section>
+
+                <section id="audit" class="blog-section">
+                    <h2>7. Use It as an Audit, Not a Reading List</h2>
+
+                    <p>Twenty sub-skills is more than anyone should try to study in sequence, and treating the map as a curriculum is the fastest way to get nothing from it. It works better as a self-audit: for each of the four, ask honestly which one is weakest.</p>
+
+                    <p>The pattern is fairly predictable. People from a traditional software background tend to be strong on fundamentals and weak on AI application building and shaping the build. People from a prompting-first background are the inverse. People from a systems and performance background — my own bias showing — are usually strong on fundamentals and on the parts of AI application building that involve profiling and deployment, and weakest exactly where the last letter points: product decisions, cross-functional communication, and proposing work that nobody asked for.</p>
+
+                    <ul class="checklist">
+                        <li>Pick the weakest of the four, not the most interesting.</li>
+                        <li>Inside it, pick one sub-skill and one real project — the map rewards practice, not reading.</li>
+                        <li>For anything in the agent skill, expect to redo it in six months; build the habit, not the configuration.</li>
+                        <li>Write down the tradeoffs you did not know existed before you started. That list is the actual measure of progress.</li>
+                    </ul>
+                </section>
+
+                <section id="conclusion" class="blog-section">
+                    <h2>Conclusion</h2>
+
+                    <p>The most useful sentence across the five letters is the one about the specification: given a clear spec, agents are increasingly good at delivering to it, so the work moves toward deciding what belongs in the spec. Everything else in the map follows. Fundamentals matter because they tell you which tradeoffs the spec has to resolve. Evals matter because they tell you whether the delivered thing works. Agent skill matters because it determines how fast the loop turns. Shaping the build matters because someone has to decide what the loop is aimed at, and that person is increasingly the engineer.</p>
+
+                    <p>For those of us working closer to the hardware, the translation takes some effort — the vocabulary is LLM-shaped and the instruments are different — but the structure holds. The parts that are hard to automate are the parts that were always hard: knowing what to measure, knowing what you are trading away, and being able to prove that the thing works.</p>
+
+                    <div class="note-box">
+                        <h3>Sources</h3>
+                        <p>All five letters by Andrew Ng, published in <em>The Batch</em> by DeepLearning.AI. The summary above is a paraphrase and a personal reading, not a substitute for the originals.</p>
+                        <ul>
+                            <li>Part 1 — <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map">The AI Engineering Skills Map</a> (August 14, 2026)</li>
+                            <li>Part 2 — <a href="https://www.deeplearning.ai/the-batch/he-ai-engineering-skills-map-in-detail-building-and-deploying-ai-applications">Building and Deploying AI Applications</a> (August 21, 2026)</li>
+                            <li>Part 3 — <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map-in-detail-software-engineering-fundamentals">Software Engineering Fundamentals</a> (August 28, 2026)</li>
+                            <li>Part 4 — <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map-in-detail-using-coding-agents">Using Coding Agents</a> (September 4, 2026)</li>
+                            <li>Part 5 — <a href="https://www.deeplearning.ai/the-batch/the-ai-engineering-skills-map-in-detail-shaping-the-build">Shaping the Build</a> (September 11, 2026)</li>
+                        </ul>
+                        <p>DeepLearning.AI is collecting community input to keep the map current through a survey linked from the first letter.</p>
+                    </div>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
