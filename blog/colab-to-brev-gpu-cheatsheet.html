@@ -1,0 +1,573 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>From Colab to Brev: A Practical GPU Development Cheatsheet - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Prototype CUDA projects on Colab, then move to persistent cloud GPUs for larger workloads and reproducible development. Tested with Brev CLI v0.6.335."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .table-of-contents,
+        .note-box,
+        .warning-box {
+            background: #2b2b2b;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        .table-of-contents h3,
+        .note-box h3,
+        .warning-box h3 {
+            margin-top: 0;
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+
+        .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .table-of-contents li {
+            margin: 8px 0;
+        }
+
+        .table-of-contents a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .table-of-contents a:hover {
+            color: var(--color-cyan);
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 1rem;
+        }
+
+        .workflow-table th,
+        .workflow-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .blog-scrollable-content .warning-box {
+            background: rgba(13, 18, 28, 0.72);
+            border: 1px solid var(--color-divider);
+            border-left: 3px solid #ff2e88;
+            border-radius: 0;
+            box-shadow: -1px 0 14px rgba(255, 46, 136, 0.22);
+            color: #c4cfe0;
+        }
+
+        .blog-scrollable-content .warning-box h3 {
+            color: var(--color-cyan);
+            text-shadow: var(--text-glow-cyan);
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left" aria-label="Back to home">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>From Colab to Brev: A Practical GPU Development Cheatsheet</h1>
+            <p class="post-meta">Prototype CUDA projects on Colab, then move to persistent cloud GPUs for larger workloads and reproducible development.</p>
+            <p class="post-meta">Posted on October 11, 2026</p>
+            <p class="post-meta">Read time: 18 mins | Tags: GPU, CUDA, Colab, Brev, ML Infrastructure</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>Most GPU projects follow the same path: prototype quickly, validate correctness, then move to a more persistent environment when compute, VRAM, or iteration speed becomes a bottleneck.</p>
+
+                <p>Google Colab is convenient for notebook-based experiments and quick CUDA builds. Brev — the cloud option used in my own workflow, not the only option — provides access to configurable cloud GPU instances that you can manage from a terminal or IDE.</p>
+
+                <p>This guide combines two practical cheatsheets: one for identifying GPUs, building CUDA/C++ projects, and managing Colab's ephemeral runtimes; the other for searching, provisioning, and operating Brev GPU instances. The commands are designed to be copied, adapted, and tested without assuming a particular project repository.</p>
+
+                <div class="note-box">
+                    <h3>Mental model in one paragraph</h3>
+                    <p>Colab is an ephemeral notebook VM: free tier is usually a T4, Pro can give you L4/A100, there is no Docker daemon, and the filesystem resets on recycle. Brev is the opposite: you pick an exact GPU type, VRAM, provider and boot time, create a persistent box, SSH into it, and pay per hour. Prototype on Colab, scale on Brev.</p>
+                </div>
+
+                <div class="note-box">
+                    <h3>Tested with</h3>
+                    <p>Colab GPU runtime (verify with <code>!nvidia-smi</code> and <code>!nvcc --version</code> — assignment varies), CMake 3.24+ for <code>CMAKE_CUDA_ARCHITECTURES=native</code>, Brev CLI <code>v0.6.335</code> verified October 11, 2026. Brev flags and inventory change over time — run <code>brev search --help</code> and <code>brev create --dry-run</code> to confirm behavior on your version.</p>
+                </div>
+
+                <div class="table-of-contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#choosing">1. Choosing: Colab vs Brev</a></li>
+                        <li><a href="#colab-start">2. Colab: Enable and Identify the GPU</a></li>
+                        <li><a href="#cuda-arch">3. CUDA Architectures (Applies to Both)</a></li>
+                        <li><a href="#colab-shell">4. Colab Shell Basics and Python GPU Packages</a></li>
+                        <li><a href="#colab-build">5. Colab: Build Any CUDA C++ Project</a></li>
+                        <li><a href="#colab-monitor">6. Colab: Monitor, Persist, and Survive Resets</a></li>
+                        <li><a href="#brev-search">7. Brev: Search for GPUs</a></li>
+                        <li><a href="#brev-filter">8. Brev: Filter by Model, VRAM, and Provider</a></li>
+                        <li><a href="#brev-recipes">9. Brev: Preset Recipes and JSON + jq</a></li>
+                        <li><a href="#brev-create">10. Brev: Create Instances Safely</a></li>
+                        <li><a href="#brev-use">11. Brev: Daily Use — Shell, Copy, Ports, List</a></li>
+                        <li><a href="#troubleshoot">12. Troubleshooting Both</a></li>
+                        <li><a href="#checklist">13. Cross-Environment Reproducibility Checklist</a></li>
+                        <li><a href="#conclusion">Conclusion</a></li>
+                    </ul>
+                </div>
+
+                <section id="choosing" class="blog-section">
+                    <h2>1. Choosing: Colab vs Brev</h2>
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Colab</th>
+                                <th>Brev</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Best for</strong></td>
+                                <td>Free prototyping, notebooks, quick CUDA builds</td>
+                                <td>Training, large VRAM, persistent boxes, multi-GPU</td>
+                            </tr>
+                            <tr>
+                                <td><strong>GPU choice</strong></td>
+                                <td>Assigned (T4 common, A100/L4 not guaranteed)</td>
+                                <td>You choose, e.g.: T4, L4, A10G, A100, H100, L40S, RTX — examples only, inventory varies</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Lifetime</strong></td>
+                                <td>Ephemeral; runtime limits and idle timeouts vary</td>
+                                <td>Persistent until you stop/delete; stopping may end compute charges while attached storage and other resources can continue to incur costs — check pricing and storage-retention policy</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Access</strong></td>
+                                <td>Browser notebook, <code>!cmd</code> shell</td>
+                                <td>SSH, VS Code / Cursor, port-forward, managed ports</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cost control</strong></td>
+                                <td>Quotas and disconnects</td>
+                                <td><code>--dry-run</code> for preview plus check of actual hourly price and disk config, per-hour pricing, stop when idle</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p>My default flow: validate the idea and the CUDA build on Colab, then reproduce it on a Brev box with the VRAM the model actually needs.</p>
+                </section>
+
+                <section id="colab-start" class="blog-section">
+                    <h2>2. Colab: Enable and Identify the GPU</h2>
+                    <p>In the Colab UI:</p>
+                    <pre class="code-snippet"><code>Runtime → Change runtime type → Hardware accelerator: GPU → Save</code></pre>
+                    <p>Then confirm what you actually got — never assume T4. GPU assignment and installed CUDA tooling are separate checks: a GPU runtime does not guarantee <code>nvcc</code> is installed.</p>
+                    <pre class="code-snippet"><code class="language-bash">!nvidia-smi
+!nvidia-smi --query-gpu=name,driver_version,memory.total,compute_cap --format=csv
+!nvcc --version || echo "nvcc not installed on this runtime"
+!python3 --version</code></pre>
+                    <pre class="code-snippet"><code class="language-python">import torch
+print(torch.__version__)
+print(torch.cuda.is_available())
+print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "no cuda")</code></pre>
+                    <p>TensorFlow / JAX alternates:</p>
+                    <pre class="code-snippet"><code class="language-python">import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))
+import jax; print(jax.devices())</code></pre>
+                </section>
+
+                <section id="cuda-arch" class="blog-section">
+                    <h2>3. CUDA Architectures (Applies to Both)</h2>
+                    <p>A GPU architecture mismatch can cause <code>no kernel image available</code> at runtime; rebuild with the correct flag. Compute capability identifies hardware features, while CUDA toolkit and driver compatibility are separate constraints — matching the arch flag alone does not guarantee the toolkit/driver combination is supported. An <code>illegal instruction</code> error can have other causes, so check the surrounding error output before changing the architecture. Reference table:</p>
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>GPU</th>
+                                <th>Compute Cap.</th>
+                                <th>CMake flag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>T4 (Colab free tier)</td><td>7.5</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=75</code></td></tr>
+                            <tr><td>V100</td><td>7.0</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=70</code></td></tr>
+                            <tr><td>A100</td><td>8.0</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=80</code></td></tr>
+                            <tr><td>RTX 30xx / A10G / A40</td><td>8.6</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=86</code></td></tr>
+                            <tr><td>L4 / L40S / RTX 4090</td><td>8.9</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=89</code></td></tr>
+                            <tr><td>H100</td><td>9.0</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=90</code></td></tr>
+                            <tr><td>B100 / B200 (Blackwell DC)</td><td>10.0</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=100</code></td></tr>
+                            <tr><td>RTX 5090 (Blackwell GeForce)</td><td>12.0</td><td><code>-DCMAKE_CUDA_ARCHITECTURES=120</code></td></tr>
+                        </tbody>
+                    </table>
+                    <p>Auto-detect instead of guessing (works on Colab and on any Brev box):</p>
+                    <pre class="code-snippet"><code class="language-bash"># Fast bash one-liner (uses primary GPU):
+ARCH=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | tr -d '.')
+echo "-DCMAKE_CUDA_ARCHITECTURES=${ARCH}"</code></pre>
+                    <p>Or via Python (multi-GPU safe, deduplicates capabilities):</p>
+                    <pre class="code-snippet"><code class="language-bash">%%bash
+python3 - &lt;&lt;'PY'
+import subprocess
+
+result = subprocess.run(
+    ['nvidia-smi', '--query-gpu=compute_cap', '--format=csv,noheader'],
+    check=True, capture_output=True, text=True,
+)
+archs = sorted(set(result.stdout.strip().replace('.', '').splitlines()))
+print('-DCMAKE_CUDA_ARCHITECTURES=' + ';'.join(archs))
+PY</code></pre>
+                    <p>On CMake ≥ 3.24 you can also delegate detection entirely — but <code>native</code> detects the GPU visible at configure time, so it is for local development, not portable binaries:</p>
+                    <pre class="code-snippet"><code class="language-bash">!cmake -S . -B build -DCMAKE_CUDA_ARCHITECTURES=native</code></pre>
+                    <ul>
+                        <li><strong>Local development:</strong> <code>native</code> — fastest iteration on the current GPU.</li>
+                        <li><strong>Known deployment target:</strong> explicit arch, e.g. <code>-DCMAKE_CUDA_ARCHITECTURES=80</code> for A100.</li>
+                        <li><strong>Multiple deployment targets:</strong> deliberate list, potentially including PTX for forward compatibility, e.g. <code>-DCMAKE_CUDA_ARCHITECTURES="75;80;90a"</code>.</li>
+                    </ul>
+                    <p>For the full story on <code>native</code> vs <code>all-major</code> vs explicit lists, see my <a href="cmake-cuda-architectures-guide.html">CMake CUDA Architecture Configuration guide</a>.</p>
+                    <div class="note-box">
+                        <h3>Brev capability shortcut</h3>
+                        <p>Brev search exposes the same architecture as a filter: <code>--min-capability 7.5</code> (Turing+), <code>8.0</code> (Ampere+), <code>8.9</code> (Ada+), <code>9.0</code> (Hopper and newer). Use it when you care about features (e.g. FP8, Transformer Engine) rather than a specific card name.</p>
+                    </div>
+                </section>
+
+                <section id="colab-shell" class="blog-section">
+                    <h2>4. Colab Shell Basics and Python GPU Packages</h2>
+                    <p>Two rules: <code>!cmd</code> runs shell, <code>%cd dir</code> persists directory (<code>!cd</code> does not). Colab idle timeouts and maximum runtime vary with availability and usage.</p>
+                    <pre class="code-snippet"><code class="language-bash">!pwd &amp;&amp; ls
+%cd /content
+!apt-get update -qq &amp;&amp; apt-get install -y -qq cmake ninja-build
+!cmake --version</code></pre>
+                    <p>First inspect what is already installed — Colab runtimes often ship with PyTorch:</p>
+                    <pre class="code-snippet"><code class="language-bash">!nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+!python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"</code></pre>
+                    <p>Optional pinned environment (example only — match the wheel channel to your runtime and project; this can replace pre-installed packages):</p>
+                    <pre class="code-snippet"><code class="language-bash">!pip install -q "torch==2.3.1" "torchvision==0.18.1" --index-url https://download.pytorch.org/whl/cu121
+!pip freeze | grep -Ei "torch|transformers|accelerate|datasets|cuda"
+!python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0))"</code></pre>
+                    <p>For a reproducible project, record <code>pip freeze</code> output plus <code>nvidia-smi</code> driver, <code>nvcc --version</code>, and <code>cmake --version</code> alongside the code.</p>
+                    <p>Free VRAM before big jobs (<code>empty_cache()</code> releases unused cached allocations only — it does not free memory held by live tensors):</p>
+                    <pre class="code-snippet"><code class="language-python">import torch
+torch.cuda.empty_cache()</code></pre>
+                    <pre class="code-snippet"><code class="language-bash">!nvidia-smi --query-gpu=memory.used,memory.total --format=csv</code></pre>
+                </section>
+
+                <section id="colab-build" class="blog-section">
+                    <h2>5. Colab: Build Any CUDA C++ Project</h2>
+                    <p>Generic recipe — replace the arch flag with the value from Section 3:</p>
+                    <pre class="code-snippet"><code class="language-bash">!git clone &lt;repo-url&gt;
+%cd /content/&lt;repo&gt;
+!cmake -S . -B build -DCMAKE_CUDA_ARCHITECTURES=75 -DCMAKE_BUILD_TYPE=Release
+!cmake --build build -j$(nproc)
+!./build/&lt;binary&gt;</code></pre>
+                    <p>Iterate on a single target instead of rebuilding everything:</p>
+                    <pre class="code-snippet"><code class="language-bash">!cmake --build build --target &lt;target&gt; -j$(nproc)</code></pre>
+                    <p>If the build gets killed mid-way, <code>-j$(nproc)</code> is usually too parallel for the available RAM — retry with <code>-j2</code>.</p>
+                    <p>Validate against hidden env dependencies with a clean build or fresh clone before calling it done:</p>
+                    <pre class="code-snippet"><code class="language-bash">!rm -rf build &amp;&amp; cmake -S . -B build -DCMAKE_CUDA_ARCHITECTURES=75 -DCMAKE_BUILD_TYPE=Release &amp;&amp; cmake --build build -j2
+# or: fresh clone in /tmp and build there to catch files only present in /content</code></pre>
+                </section>
+
+                <section id="colab-monitor" class="blog-section">
+                    <h2>6. Colab: Monitor, Persist, and Survive Resets</h2>
+                    <p>Live monitoring:</p>
+                    <pre class="code-snippet"><code class="language-bash">!nvidia-smi -l 1        # live (Ctrl-C to stop)
+!nvidia-smi dmon -s u   # util stream
+!which ncu nsys nvprof || echo "no profilers on this runtime"</code></pre>
+                    <p>In-code timing (CUDA events / chrono around kernels) beats missing <code>ncu</code> on most Colab runtimes.</p>
+                    <p>The filesystem resets. Build in <code>/content</code> (fast), store on Drive (durable):</p>
+                    <pre class="code-snippet"><code class="language-python">from google.colab import drive
+drive.mount('/content/drive')</code></pre>
+                    <pre class="code-snippet"><code class="language-bash">!cp -r /content/drive/MyDrive/&lt;src&gt; /content/work
+!df -h /content
+!free -h</code></pre>
+                    <p>Drive is durable but slow — copy datasets and checkpoints to <code>/content</code> once per session and work there; avoid repeatedly copying multi-GB files in a loop if I/O becomes the bottleneck.</p>
+                    <p>Quotas and resets:</p>
+                    <pre class="code-snippet"><code class="language-bash">!df -h
+!free -h
+# Runtime → Disconnect and delete runtime → factory reset when stuck</code></pre>
+                    <div class="warning-box">
+                        <h3>Expect on Colab</h3>
+                        <p>Idle disconnects, runtime limits, and GPU assignment vary. Free-tier notebooks can run for up to 12 hours depending on availability and usage; A100/L4 access is not guaranteed. If files vanished, the runtime recycled — re-clone and restore from Drive.</p>
+                    </div>
+                </section>
+
+                <section id="brev-search" class="blog-section">
+                    <h2>7. Brev: Search for GPUs</h2>
+                    <p>Commands below tested with Brev CLI <code>v0.6.335</code> (October 11, 2026). Flags evolve — run <code>brev search --help</code> if a filter or sort key is rejected on your version.</p>
+                    <p>GPU instances only. For CPU-only, replace <code>brev search</code> with <code>brev search cpu</code>.</p>
+                    <pre class="code-snippet"><code class="language-bash">brev search                    # all GPUs, cheapest first
+brev search gpu                # same (explicit)
+brev search gpu --wide         # +RAM, ARCH columns
+brev search --json | head -n 40</code></pre>
+                    <p>Output columns include <code>TYPE | GPU | COUNT | VRAM | TOTAL | $/HR | BOOT | FEATURES</code> (use <code>brev search gpu --wide</code> for extra <code>RAM, ARCH</code> columns; exact columns vary by version — check <code>brev search --help</code>). Features: <code>S</code> = stoppable, <code>R</code> = rebootable, <code>P</code> = flex-ports.</p>
+                    <h3>Sort</h3>
+                    <pre class="code-snippet"><code class="language-bash">brev search --sort price       # default, cheapest first
+brev search --sort vram
+brev search --sort total-vram
+brev search --sort boot-time   # fastest boot first
+brev search --sort gpu-count
+brev search --sort vcpu
+brev search --sort type
+brev search --sort disk
+brev search --sort price --desc  # most expensive first</code></pre>
+                </section>
+
+                <section id="brev-filter" class="blog-section">
+                    <h2>8. Brev: Filter by Model, VRAM, and Provider</h2>
+                    <p>Partial, case-insensitive match on GPU name. Models below are examples of what may be available — not guaranteed inventory:</p>
+                    <pre class="code-snippet"><code class="language-bash">brev search --gpu-name T4       # budget 16GB
+brev search --gpu-name L4       # efficient 24GB
+brev search --gpu-name A10G     # balanced 24GB (e.g. g5.xlarge)
+brev search --gpu-name A100     # 40/80GB training
+brev search --gpu-name H100     # Hopper 80GB
+brev search --gpu-name L40S     # 48GB Ada
+brev search --gpu-name RTX      # RTX4090 / RTX6000Ada / RTX5090
+brev search --gpu-name A4000    # cheap 16GB (e.g. hyperstack_A4000 — price varies, checked Oct 2026)
+brev search --gpu-name A6000    # 48GB Ampere</code></pre>
+                    <p>Filter by VRAM, provider, disk, boot time, and features. <code>--min-vram</code> is the minimum per GPU; <code>--min-total-vram</code> is the sum across devices (COUNT x VRAM) — not a single unified pool. An 80 GB aggregate does not allow a single 80 GB allocation on one GPU:</p>
+                    <pre class="code-snippet"><code class="language-bash">brev search --min-vram 16 --sort price        # per-GPU minimum
+brev search --min-vram 24 --sort price
+brev search --min-vram 40 --sort price
+brev search --min-vram 80 --sort price        # A100-80GB / H100
+brev search --min-total-vram 48 --sort price  # COUNT x VRAM (multi-GPU), e.g. 2x24GB
+brev search --min-total-vram 160 --sort price # e.g. 2x80GB — per-GPU limits still apply
+
+brev search --provider aws --sort price
+brev search --provider gcp --sort price
+brev search --gpu-name A100 --provider aws --sort price
+
+brev search --min-disk 500                     # GB
+brev search --max-boot-time 3 --sort price     # fast boot
+brev search --max-boot-time 5 --sort price
+brev search --stoppable --sort price
+brev search --rebootable --sort price
+brev search --flex-ports --sort price</code></pre>
+                    <p>Compute capability reference (same arch table as Section 3, Brev view):</p>
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Cap</th>
+                                <th>Arch</th>
+                                <th>GPUs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>6.1</td><td>Pascal</td><td>P4 (avoid for new work)</td></tr>
+                            <tr><td>7.5</td><td>Turing</td><td>T4</td></tr>
+                            <tr><td>8.0</td><td>Ampere</td><td>A100, A10</td></tr>
+                            <tr><td>8.6</td><td>Ampere</td><td>A10G, A40, A4000, A6000, RTX30xx</td></tr>
+                            <tr><td>8.9</td><td>Ada</td><td>L4, L40/L40S, RTX4090, RTX6000Ada</td></tr>
+                            <tr><td>9.0</td><td>Hopper</td><td>H100</td></tr>
+                            <tr><td>10.0</td><td>Blackwell DC</td><td>B100/B200</td></tr>
+                            <tr><td>12.0</td><td>Blackwell</td><td>RTX 5090</td></tr>
+                        </tbody>
+                    </table>
+                    <pre class="code-snippet"><code class="language-bash">brev search --min-capability 7.5 --sort price  # Turing+
+brev search --min-capability 8.0 --sort price  # Ampere+
+brev search --min-capability 8.9 --sort price  # Ada+
+brev search --min-capability 9.0 --sort price  # Hopper and newer</code></pre>
+                </section>
+
+                <section id="brev-recipes" class="blog-section">
+                    <h2>9. Brev: Preset Recipes and JSON + jq</h2>
+                    <p>Recipes I reuse:</p>
+                    <pre class="code-snippet"><code class="language-bash"># dev: fast + cheap
+brev search --max-boot-time 3 --sort price | head -10
+
+# ML training: high VRAM
+brev search --min-vram 40 --sort price | head -10
+
+# large model: total VRAM
+brev search --min-total-vram 80 --sort price | head -10
+
+# production: specific GPU + fast boot
+brev search --gpu-name A100 --max-boot-time 5 --sort price
+
+# budget: cheapest usable
+brev search --min-vram 16 --sort price | head -5
+
+# Hopper and newer
+brev search --min-capability 9.0 --sort price
+
+# stoppable + VRAM (cost-saving training)
+brev search --stoppable --min-total-vram 40 --sort price</code></pre>
+                    <p>Scriptable search with JSON (field names vary by CLI version — inspect <code>brev search --json | jq '.[0]'</code> first):</p>
+                    <pre class="code-snippet"><code class="language-bash">brev search --json | jq '.[0]'
+brev search --json | jq -r '.[0] | keys'
+# example only — verify keys on v0.6.335 before scripting:
+brev search --gpu-name A100 --json | jq -r '.[] | "\(.type) \(.price_per_hour)/hr"'</code></pre>
+                </section>
+
+                <section id="brev-create" class="blog-section">
+                    <h2>10. Brev: Create Instances Safely</h2>
+                    <pre class="code-snippet"><code class="language-bash">brev create my-box                                   # smart defaults (~20GB VRAM, 500GB disk, cap 8.0+, &lt;7m boot)
+brev create my-box --type g5.xlarge                  # exact type
+brev create my-box --type g5.xlarge,g5.2xlarge       # fallback chain
+brev create my-box --gpu-name A100 --min-vram 40     # filters directly on create
+brev create my-cluster --count 3 --type g5.xlarge    # multi (confirm first: cost x3)
+brev create my-box --startup-script @setup.sh        # local file, @ prefix
+brev create my-box --startup-script 'pip install torch'
+brev create my-box --dry-run                         # preview match, no cost — always run first, then still check hourly price + disk
+brev search --gpu-name A100 | brev create my-box     # pipe search -&gt; create
+brev search cpu --min-ram 64 | brev create my-cpu-box</code></pre>
+                    <div class="warning-box">
+                        <h3>Safety before create</h3>
+                        <p>Confirm first: <code>delete</code>, <code>stop</code>, <code>--count &gt;1</code>, H100 / multi-GPU create (expensive). Always: <code>--dry-run</code> before create, then verify the actual hourly price and disk configuration in the search output — dry-run does not replace that check. Preview <code>brev ls | awk ...</code> before piping to stop/delete, show cost/type before create. Stopped instances may still accrue storage charges.</p>
+                    </div>
+                </section>
+
+                <section id="brev-use" class="blog-section">
+                    <h2>11. Brev: Daily Use — Shell, Copy, Ports, List</h2>
+                    <h3>Shell and exec</h3>
+                    <pre class="code-snippet"><code class="language-bash">brev shell my-box                      # interactive SSH
+brev exec my-box "nvidia-smi"          # one-shot command
+brev exec my-box @setup.sh             # run local script remotely
+brev exec box1 box2 box3 "nvidia-smi"  # multi-instance</code></pre>
+                    <h3>Open in editor</h3>
+                    <pre class="code-snippet"><code class="language-bash">brev open my-box          # default editor
+brev open my-box code     # VS Code
+brev open my-box cursor
+brev open my-box windsurf
+brev open my-box tmux
+brev open --set-default cursor</code></pre>
+                    <h3>Copy files</h3>
+                    <pre class="code-snippet"><code class="language-bash">brev copy ./train.py my-box:/home/ubuntu/
+brev copy my-box:/home/ubuntu/ckpt/ ./ckpt/</code></pre>
+                    <h3>Port-forward (simple)</h3>
+                    <pre class="code-snippet"><code class="language-bash">brev port-forward my-box -p 8888:8888  # jupyter (-p / --port, same flag on v0.6.335)
+brev port-forward my-box -p 8000:8000</code></pre>
+                    <h3>Managed ports (needs <code>P</code> / flex-ports)</h3>
+                    <pre class="code-snippet"><code class="language-bash">brev ports ls my-box
+brev ports ls my-box --json
+brev ports get nport-abc123
+brev ports open my-box 8080
+brev ports open my-box 8000-8031
+brev ports open my-box 3000 --protocol http --public
+brev ports open my-box 8888 --protocol http --authorize me@example.com
+brev ports open my-box 53 --protocol udp --allow 203.0.113.10/32
+brev ports update nport-abc123 --destination-port 8081
+brev ports update nport-abc123 --public
+brev ports remove my-box 8080
+brev ports rm nport-abc123</code></pre>
+                    <div class="warning-box">
+                        <h3>Public ports are public</h3>
+                        <p>Managed ports with <code>--public</code> can expose services to the internet. Avoid publishing unauthenticated Jupyter servers or dev endpoints — prefer <code>--authorize me@example.com</code> or IP allow-lists, and close ports when done.</p>
+                    </div>
+                    <h3>List / manage</h3>
+                    <p><code>brev ls</code> = cloud instances only. <code>brev ls nodes</code> = Brev Connect machines only (never in <code>brev ls</code>).</p>
+                    <pre class="code-snippet"><code class="language-bash">brev ls
+brev ls instances
+brev ls nodes
+brev ls orgs
+brev ls --json | jq -r '.workspaces[].name'
+brev ls nodes --json | jq -r '.[].name'
+brev ls nodes --json | jq -r '.[] | select(.status=="Connected") | .name'
+
+brev stop my-box
+brev start my-box
+brev delete my-box
+brev reset my-box        # recover from errors
+brev stop --all          # all running (confirm first)</code></pre>
+                    <p>Bulk (preview before destructive):</p>
+                    <pre class="code-snippet"><code class="language-bash">brev ls | awk '/RUNNING/ {print $1}'              # preview
+brev ls | awk '/RUNNING/ {print $1}' | brev stop
+brev ls | awk '/STOPPED/ {print $1}' | brev delete
+brev ls | awk '/STOPPED/ {print $1}' | brev start
+brev ls | grep "test-" | awk '{print $1}' | brev stop
+brev ls | awk '/RUNNING/ {print $1}' | brev exec "nvidia-smi"
+brev search --gpu-name A100 | brev create my-box | brev open cursor
+brev create my-box | brev exec @setup.sh</code></pre>
+                    <p>Orgs:</p>
+                    <pre class="code-snippet"><code class="language-bash">brev org ls
+brev org set my-org   # alias: brev set my-org
+brev invite</code></pre>
+                    <p>Once the box is up, the Colab checks from Section 2 apply verbatim — <code>nvidia-smi</code>, compute-cap query, and the CMake arch flag for whatever GPU Brev gave you.</p>
+                </section>
+
+                <section id="troubleshoot" class="blog-section">
+                    <h2>12. Troubleshooting Both</h2>
+                    <h3>Colab</h3>
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Symptom</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>CUDA unknown / no GPU</code></td><td>Runtime → GPU type set? <code>!nvidia-smi</code> must list a GPU first</td></tr>
+                            <tr><td><code>no kernel image available</code></td><td>CUDA-arch mismatch — rebuild with Section 3 flag for this GPU</td></tr>
+                            <tr><td><code>CUDA error / toolkit-driver mismatch</code></td><td><code>nvcc --version</code> vs driver in <code>nvidia-smi</code> — align toolkit/channel, reinstall wheel if needed</td></tr>
+                            <tr><td><code>illegal memory access / illegal instruction</code></td><td>Separate bug class — check indices/bounds, UVM, arch flag; do not assume arch fix alone</td></tr>
+                            <tr><td><code>CUDA out of memory</code></td><td>Smaller batch, release tensors, <code>empty_cache()</code> (cached-only), restart runtime</td></tr>
+                            <tr><td><code>nvcc</code> missing</td><td>Normal on CPU runtime — switch to GPU runtime</td></tr>
+                            <tr><td><code>cmake</code> old/missing</td><td><code>apt-get install -y cmake</code>, need 3.24+ for <code>native</code> (3.20+ minimum for most CUDA projects otherwise)</td></tr>
+                            <tr><td>Build killed mid-way</td><td><code>-j$(nproc)</code> too parallel for RAM — try <code>-j2</code>; keep tab active</td></tr>
+                            <tr><td>Profilers absent</td><td><code>which ncu</code> check; fall back to in-app timing</td></tr>
+                            <tr><td>Files vanished</td><td>Runtime recycled — re-clone, use Drive for durable storage</td></tr>
+                        </tbody>
+                    </table>
+                    <h3>Brev</h3>
+                    <pre class="code-snippet"><code class="language-bash">brev ls                # does it exist? RUNNING?
+brev ls nodes          # Connect machines live here, not in brev ls
+brev org ls            # wrong org?
+brev refresh           # fix SSH config
+brev healthcheck
+which code cursor      # editor in PATH?
+brev feedback "what failed, what you expected"  # no secrets</code></pre>
+                    <table class="workflow-table">
+                        <thead>
+                            <tr>
+                                <th>Symptom</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Instance not found</td><td><code>brev ls</code> + <code>brev ls nodes</code> + <code>brev org ls</code></td></tr>
+                            <tr><td>Create fails</td><td>Try another type: <code>brev search --sort price</code>; check quota</td></tr>
+                            <tr><td>SSH fails</td><td><code>brev refresh</code>, instance must be RUNNING</td></tr>
+                            <tr><td>Editor won't open</td><td><code>which code</code>, <code>brev open --set-default code</code></td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="checklist" class="blog-section">
+                    <h2>13. Cross-Environment Reproducibility Checklist</h2>
+                    <p>The move from Colab to Brev only pays off if the same project builds and behaves consistently in both. Run this before scaling:</p>
+                    <ul>
+                        <li>Record GPU model, compute capability (<code>nvidia-smi --query-gpu=compute_cap</code>), driver (<code>nvidia-smi</code>), and CUDA toolkit (<code>nvcc --version</code>).</li>
+                        <li>Pin compiler, CMake (3.24+ for <code>native</code>), and Python deps (<code>pip freeze</code>).</li>
+                        <li>Keep build configuration and architecture selection in a script or CMake preset — not a pasted shell line.</li>
+                        <li>Run the same correctness tests on both environments.</li>
+                        <li>Benchmark with warm-up iterations and CUDA events or another appropriate GPU timing method.</li>
+                        <li>Save test outputs, benchmark results, and checkpoints outside ephemeral storage (Drive on Colab, persistent disk/snapshot on Brev).</li>
+                    </ul>
+                </section>
+
+                <section id="conclusion" class="blog-section">
+                    <h2>Conclusion</h2>
+                    <p>Colab minimizes setup friction; Brev provides a more persistent environment with configurable GPU resources. The useful skill is knowing when to move between them — and how to keep builds, tests, and benchmarks reproducible across both.</p>
+                    <p>Identify the GPU, select an appropriate CUDA architecture, pin the environment, validate correctness, and measure performance before scaling up. Treat cloud costs and persistent storage as part of the engineering workflow, not an afterthought.</p>
+                    <p>For production-oriented CUDA development, pair this cheatsheet with the <a href="cmake-cuda-architectures-guide.html">CMake CUDA architecture guide</a> to understand native builds, explicit architecture targets, and portable deployment.</p>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
