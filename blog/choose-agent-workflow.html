@@ -1,0 +1,579 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Choosing an Agent Workflow: Match Coordination to the Task - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="A practical guide to choosing AI agent workflows: single agents, code-driven pipelines, parallel workers, verification loops, shared state, and bounded delegation."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            overflow-wrap: break-word;
+        }
+
+        .table-of-contents,
+        .note-box {
+            padding: 20px;
+            margin: 24px 0;
+        }
+
+        .blog-scrollable-content .table-of-contents h3,
+        .blog-scrollable-content .note-box h3 {
+            margin-top: 0;
+        }
+
+        .blog-scrollable-content .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        .note-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+            margin: 24px 0;
+        }
+
+        .table-scroll:focus-visible {
+            outline: 2px solid var(--color-cyan);
+            outline-offset: 3px;
+        }
+
+        .workflow-table {
+            width: 100%;
+            min-width: 640px;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+
+        .workflow-table th,
+        .workflow-table td {
+            padding: 12px;
+            vertical-align: top;
+        }
+
+        .blog-scrollable-content .handoff-example {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font-family: var(--font-mono);
+        }
+
+        .workflow-figure {
+            margin: 28px 0;
+            padding: 20px;
+            border: 1px solid var(--color-divider);
+            background: rgba(13, 18, 28, 0.72);
+        }
+
+        .workflow-figure svg {
+            display: block;
+            width: 100%;
+            max-width: 840px;
+            height: auto;
+            margin: 0 auto;
+        }
+
+        .workflow-figure .diagram-mobile {
+            display: none;
+        }
+
+        .workflow-figure .node {
+            fill: #101d2b;
+            stroke: #4c718f;
+            stroke-width: 1.5;
+            rx: 6;
+        }
+
+        .workflow-figure .control {
+            fill: #271729;
+            stroke: #d26b9a;
+        }
+
+        .workflow-figure .check {
+            fill: #102a29;
+            stroke: #57b6a8;
+        }
+
+        .workflow-figure .terminal {
+            fill: #1b202a;
+            stroke: #8493a6;
+            rx: 24;
+        }
+
+        .workflow-figure .edge {
+            fill: none;
+            stroke: #9aafc4;
+            stroke-width: 1.7;
+            stroke-linejoin: round;
+        }
+
+        .workflow-figure marker path {
+            fill: #9aafc4;
+        }
+
+        .workflow-figure text {
+            fill: #e2edf7;
+            font-family: var(--font-mono);
+            font-size: 18px;
+            text-anchor: middle;
+        }
+
+        .workflow-figure .edge-label {
+            fill: #acbfd2;
+            font-size: 15px;
+        }
+
+        .workflow-figure figcaption {
+            margin-top: 16px;
+            color: #b6c3d5;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        @media screen and (max-width: 600px) {
+            .workflow-figure {
+                padding: 12px;
+            }
+
+            .workflow-figure .diagram-desktop {
+                display: none;
+            }
+
+            .workflow-figure .diagram-mobile {
+                display: block;
+                max-width: 340px;
+            }
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left" aria-label="Back to home">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>Choosing an Agent Workflow</h1>
+            <p class="post-meta">Match coordination to the task</p>
+            <p class="post-meta">Posted on <time datetime="2026-11-15">November 15, 2026</time></p>
+            <p class="post-meta">Read time: 11 mins | Tags: AI Engineering, Coding Agents, Developer Workflow</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>A failing integration test, a dataset audit, and a review spanning several services can all involve AI agents. Their coordination needs are quite different. The bug may depend on one person holding the whole execution path in mind. The audit may repeat the same operation thousands of times. The system review may contain independent investigations whose conclusions must eventually agree.</p>
+
+                <p>Choosing a workflow starts with the shape of the work, its constraints, and the evidence needed to accept the result. This post walks through the coordination patterns and their costs, with illustrative engineering examples. The examples are design choices to evaluate against your own workload; they make no benchmark claims about which arrangement is fastest or cheapest.</p>
+
+                <div class="note-box">
+                    <h3>The starting rule</h3>
+                    <p>Use the simplest arrangement that can meet the acceptance criteria. Add parallel work for independent tasks, verification for a quality problem, and another management layer when a subtask needs coordination of its own.</p>
+                </div>
+
+                <nav class="table-of-contents" aria-label="Table of contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#hierarchy">Multi-tier pyramid</a></li>
+                        <li><a href="#single-agent">One agent with tools and selective context</a></li>
+                        <li><a href="#code-driven">Code-driven workflow or DAG</a></li>
+                        <li><a href="#flat-fan-out">Flat fan-out with one integration owner</a></li>
+                        <li><a href="#sequential-pipeline">Sequential pipeline</a></li>
+                        <li><a href="#verification">Generator and verifier loop</a></li>
+                        <li><a href="#shared-workspace">Shared workspace or blackboard</a></li>
+                        <li><a href="#routing">Routing and peer handoffs</a></li>
+                        <li><a href="#patterns">Workflow comparison</a></li>
+                        <li><a href="#decision">Define the decision before choosing roles</a></li>
+                        <li><a href="#handoffs">Make handoffs and ownership explicit</a></li>
+                        <li><a href="#examples">Three tasks, three starting points</a></li>
+                        <li><a href="#recommendation">Write a recommendation you can evaluate</a></li>
+                    </ul>
+                </nav>
+
+                <section id="hierarchy" class="blog-section">
+                    <h2>Multi-tier pyramid</h2>
+
+                    <p>The <strong>multi-tier pyramid</strong> is a hierarchical delegation workflow: a root coordinator assigns broad areas to manager agents, and each manager delegates narrower tasks to workers. Managers plan their area's work, reconcile findings, and return an integrated result. The root remains responsible for the final deliverable.</p>
+
+                    <figure class="workflow-figure" id="hierarchy-diagram">
+                        <svg class="diagram-desktop" viewBox="0 0 840 350" role="img" aria-labelledby="hierarchy-title hierarchy-desc">
+                            <title id="hierarchy-title">Multi-tier pyramid for a system review</title>
+                            <desc id="hierarchy-desc">A root coordinator delegates to backend and frontend managers. The backend manager assigns API and persistence reviews; the frontend manager assigns user-flow and accessibility reviews. Findings return up the same branches.</desc>
+                            <defs><marker id="hierarchy-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#hierarchy-arrow)">
+                                <path d="M420 76 V104 H220 V135"/><path d="M420 76 V104 H620 V135"/>
+                                <path d="M220 195 V230 H115 V265"/><path d="M220 195 V230 H305 V265"/>
+                                <path d="M620 195 V230 H535 V265"/><path d="M620 195 V230 H725 V265"/>
+                            </g>
+                            <rect class="node control" x="330" y="16" width="180" height="60"/>
+                            <rect class="node control" x="130" y="135" width="180" height="60"/>
+                            <rect class="node control" x="530" y="135" width="180" height="60"/>
+                            <rect class="node" x="30" y="265" width="170" height="54"/>
+                            <rect class="node" x="220" y="265" width="170" height="54"/>
+                            <rect class="node" x="450" y="265" width="170" height="54"/>
+                            <rect class="node" x="640" y="265" width="170" height="54"/>
+                            <text x="420" y="52">Root coordinator</text>
+                            <text x="220" y="160">Backend<tspan x="220" dy="22">manager</tspan></text>
+                            <text x="620" y="160">Frontend<tspan x="620" dy="22">manager</tspan></text>
+                            <text x="115" y="298">API contracts</text><text x="305" y="298">Persistence</text>
+                            <text x="535" y="298">User flows</text><text x="725" y="298">Accessibility</text>
+                        </svg>
+                        <svg class="diagram-mobile" viewBox="0 0 340 450" role="img" aria-labelledby="hierarchy-mobile-title hierarchy-mobile-desc">
+                            <title id="hierarchy-mobile-title">Multi-tier pyramid for a system review</title>
+                            <desc id="hierarchy-mobile-desc">A root coordinator delegates to two managers. Each manager coordinates two worker reviews; evidence returns through the managers to the root.</desc>
+                            <defs><marker id="hierarchy-mobile-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#hierarchy-mobile-arrow)">
+                                <path d="M170 78 V108 H87 V140"/><path d="M170 78 V108 H253 V140"/>
+                                <path d="M87 200 V240 H12 V305 H26"/><path d="M87 200 V240 H12 V405 H26"/>
+                                <path d="M253 200 V240 H178 V305 H192"/><path d="M253 200 V240 H178 V405 H192"/>
+                            </g>
+                            <rect class="node control" x="75" y="18" width="190" height="60"/>
+                            <rect class="node control" x="16" y="140" width="142" height="60"/>
+                            <rect class="node control" x="182" y="140" width="142" height="60"/>
+                            <rect class="node" x="26" y="280" width="132" height="50"/>
+                            <rect class="node" x="26" y="380" width="132" height="50"/>
+                            <rect class="node" x="192" y="280" width="132" height="50"/>
+                            <rect class="node" x="192" y="380" width="132" height="50"/>
+                            <text x="170" y="54">Root coordinator</text>
+                            <text x="87" y="165">Backend<tspan x="87" dy="22">manager</tspan></text>
+                            <text x="253" y="165">Frontend<tspan x="253" dy="22">manager</tspan></text>
+                            <text x="92" y="311">API contracts</text><text x="92" y="411">Persistence</text>
+                            <text x="258" y="311">User flows</text><text x="258" y="411">Accessibility</text>
+                        </svg>
+                        <figcaption><strong>Multi-tier pyramid.</strong> Arrows show delegation; evidence and integrated findings return up the same branches. Each manager must resolve a real coordination problem within its area.</figcaption>
+                    </figure>
+
+                    <p>Consider a system review. A backend manager might need to reconcile API behavior, persistence rules, and migration compatibility before the root compares those findings with frontend assumptions. That intermediate integration is useful work. A manager who only forwards a question and repeats an answer adds a handoff without resolving anything.</p>
+
+                    <p>Every layer can omit constraints, duplicate analysis, or wait on a slow branch. Put limits on depth, concurrent work, and total effort. Preserve original requirements and exact evidence references, and require unresolved disagreements to travel upward. Different branches can have different depths; the structure should follow their coordination needs.</p>
+
+                    <div class="note-box">
+                        <h3>Context separation and permissions</h3>
+                        <p>An agent's role description does not enforce access restrictions. Separate sessions may share a filesystem, and their initial context depends on the runtime. Check actual tool permissions, model controls, and workspace isolation before relying on them.</p>
+                    </div>
+
+                    <p>Workload size alone is a weak reason to add managers. A thousand independent records may suit a batch job. A small change across a tightly coupled interface may need careful coordination. The useful question is whether a branch contains decisions and dependencies that someone must actively reconcile.</p>
+                </section>
+
+                <section id="single-agent" class="blog-section">
+                    <h2>One agent with tools and selective context</h2>
+                    <p>For an unfamiliar bug, keeping the reproduction, suspected cause, and proposed fix in one session can be valuable. Load relevant code as needed and save important discoveries. If context becomes the problem, first consider better retrieval, durable notes, and compaction. Each can omit details, so keep original evidence accessible. Additional agents introduce their own context-transfer problem.</p>
+                </section>
+
+                <section id="code-driven" class="blog-section">
+                    <h2>Code-driven workflow or DAG</h2>
+                    <p>When the steps are known, ordinary code can enumerate inputs, schedule dependencies, and validate results. A directed acyclic graph, or DAG, represents steps that become eligible to run when their prerequisites finish. Independent branches can run together; dependent ones wait.</p>
+                    <p>Checkpoints, caching, and retries must be implemented deliberately. A repeatable scheduler does not make model output deterministic, and retries need stable item identifiers and protection against duplicated side effects. Keep operations that require no model judgment in ordinary code.</p>
+                </section>
+
+                <section id="flat-fan-out" class="blog-section">
+                    <h2>Flat fan-out with one integration owner</h2>
+                    <p>Flat fan-out works when each worker can answer a bounded question and one owner can combine the answers. Independent branches run in parallel and return evidence to the integrator. Predetermined branches are a <strong>parallelization</strong> workflow; when an agent decides how to break down each incoming task and assigns the resulting work, the arrangement follows the <strong>orchestrator-workers</strong> pattern. Similar diagrams can therefore hide different choices about who controls the work.</p>
+
+                    <figure class="workflow-figure" id="parallel-diagram">
+                        <svg class="diagram-desktop" viewBox="0 0 840 300" role="img" aria-labelledby="parallel-title parallel-desc">
+                            <title id="parallel-title">Flat fan-out with one integration owner</title>
+                            <desc id="parallel-desc">A coordinator assigns independent tasks to three workers. Their findings return to the same coordinator for integration into one result.</desc>
+                            <defs><marker id="parallel-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#parallel-arrow)">
+                                <path d="M182 150 C240 150 242 55 300 55"/><path d="M182 150 H300"/><path d="M182 150 C240 150 242 245 300 245"/>
+                                <path d="M470 55 C548 55 542 150 620 150"/><path d="M470 150 H620"/><path d="M470 245 C548 245 542 150 620 150"/>
+                            </g>
+                            <rect class="node control" x="20" y="120" width="162" height="60"/>
+                            <rect class="node" x="300" y="25" width="170" height="60"/>
+                            <rect class="node" x="300" y="120" width="170" height="60"/>
+                            <rect class="node" x="300" y="215" width="170" height="60"/>
+                            <rect class="node control" x="620" y="120" width="196" height="60"/>
+                            <text x="101" y="156">Coordinator</text>
+                            <text x="385" y="61">Worker A</text><text x="385" y="156">Worker B</text><text x="385" y="251">Worker C</text>
+                            <text x="718" y="156">Integrate results</text>
+                        </svg>
+                        <svg class="diagram-mobile" viewBox="0 0 340 420" role="img" aria-labelledby="parallel-mobile-title parallel-mobile-desc">
+                            <title id="parallel-mobile-title">Flat fan-out with one integration owner</title>
+                            <desc id="parallel-mobile-desc">The coordinator fans out to three independent workers, then gathers their results into one integrated answer.</desc>
+                            <defs><marker id="parallel-mobile-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#parallel-mobile-arrow)">
+                                <path d="M170 78 V118 H57 V170"/><path d="M170 78 V170"/><path d="M170 78 V118 H283 V170"/>
+                                <path d="M57 240 V280 H170 V340"/><path d="M170 240 V340"/><path d="M283 240 V280 H170 V340"/>
+                            </g>
+                            <rect class="node control" x="85" y="18" width="170" height="60"/>
+                            <rect class="node" x="12" y="170" width="90" height="70"/>
+                            <rect class="node" x="125" y="170" width="90" height="70"/>
+                            <rect class="node" x="238" y="170" width="90" height="70"/>
+                            <rect class="node control" x="70" y="340" width="200" height="60"/>
+                            <text x="170" y="54">Coordinator</text>
+                            <text x="57" y="200">Worker<tspan x="57" dy="22">A</tspan></text>
+                            <text x="170" y="200">Worker<tspan x="170" dy="22">B</tspan></text>
+                            <text x="283" y="200">Worker<tspan x="283" dy="22">C</tspan></text>
+                            <text x="170" y="376">Integrate results</text>
+                        </svg>
+                        <figcaption><strong>Flat fan-out with one integration owner.</strong> Independent branches run concurrently. The coordinator appears at both ends: it scopes the assignments and owns the final integration.</figcaption>
+                    </figure>
+                </section>
+
+                <section id="sequential-pipeline" class="blog-section">
+                    <h2>Sequential pipeline</h2>
+                    <p>A sequential pipeline fits ordered transformations such as extracting facts, normalizing records, and drafting a report. Each stage needs an input and output contract; it does not automatically need its own autonomous agent. Dependent stages remain serial for one item, even if several items move through the pipeline at once. When successive model calls consume the previous call's output, this is <strong>prompt chaining</strong>.</p>
+
+                    <figure class="workflow-figure" id="pipeline-diagram">
+                        <svg class="diagram-desktop" viewBox="0 0 840 200" role="img" aria-labelledby="pipeline-title pipeline-desc">
+                            <title id="pipeline-title">Sequential pipeline with a validation gate</title>
+                            <desc id="pipeline-desc">Inputs pass through extraction and a check. Passing records become a report; failed records stop for inspection.</desc>
+                            <defs><marker id="pipeline-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#pipeline-arrow)">
+                                <path d="M136 68 H218"/><path d="M362 68 H438"/><path d="M582 68 H668"/>
+                                <path d="M510 100 V136"/>
+                            </g>
+                            <rect class="node terminal" x="24" y="36" width="112" height="64"/>
+                            <rect class="node" x="218" y="36" width="144" height="64"/>
+                            <rect class="node check" x="438" y="36" width="144" height="64"/>
+                            <rect class="node terminal" x="668" y="36" width="144" height="64"/>
+                            <rect class="node control" x="420" y="136" width="180" height="48"/>
+                            <text x="80" y="74">Inputs</text><text x="290" y="74">Extract</text>
+                            <text x="510" y="74">Check</text><text x="740" y="74">Report</text>
+                            <text x="510" y="166">Stop + inspect</text>
+                            <text class="edge-label" x="625" y="55">pass</text><text class="edge-label" x="541" y="123">fail</text>
+                        </svg>
+                        <svg class="diagram-mobile" viewBox="0 0 340 420" role="img" aria-labelledby="pipeline-mobile-title pipeline-mobile-desc">
+                            <title id="pipeline-mobile-title">Sequential pipeline with a validation gate</title>
+                            <desc id="pipeline-mobile-desc">Inputs flow down through extraction and a check to a report. A failed check branches right to stop and inspect.</desc>
+                            <defs><marker id="pipeline-mobile-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#pipeline-mobile-arrow)">
+                                <path d="M115 80 V120"/><path d="M115 180 V220"/><path d="M115 280 V350"/>
+                                <path d="M200 250 H238"/>
+                            </g>
+                            <rect class="node terminal" x="30" y="20" width="170" height="60"/>
+                            <rect class="node" x="30" y="120" width="170" height="60"/>
+                            <rect class="node check" x="30" y="220" width="170" height="60"/>
+                            <rect class="node terminal" x="30" y="350" width="170" height="60"/>
+                            <rect class="node control" x="238" y="220" width="92" height="60"/>
+                            <text x="115" y="56">Inputs</text><text x="115" y="156">Extract</text>
+                            <text x="115" y="256">Check</text><text x="115" y="386">Report</text>
+                            <text x="284" y="245">Stop +<tspan x="284" dy="21">inspect</tspan></text>
+                            <text class="edge-label" x="146" y="319">pass</text><text class="edge-label" x="219" y="236">fail</text>
+                        </svg>
+                        <figcaption><strong>Sequential pipeline.</strong> Each step consumes a defined artifact. A failed check stops the flow before an invalid record reaches the report. Stages can be ordinary code or model calls.</figcaption>
+                    </figure>
+                </section>
+
+                <section id="verification" class="blog-section">
+                    <h2>Generator and verifier loop</h2>
+
+                    <p>A <strong>generator and verifier loop</strong> can improve any of these arrangements: produce an artifact, evaluate it against agreed criteria, then accept it, return specific defects, or escalate. When one model call evaluates another's output and feeds back improvements, this is the <strong>evaluator-optimizer</strong> pattern. Verification can also use objective tests and independent evidence. Two agents can make the same mistake; agreement alone does not establish correctness.</p>
+
+                    <figure class="workflow-figure" id="verification-diagram">
+                        <svg class="diagram-desktop" viewBox="0 0 840 250" role="img" aria-labelledby="verification-title verification-desc">
+                            <title id="verification-title">A bounded generator and verifier loop</title>
+                            <desc id="verification-desc">An artifact is produced and verified. A passing artifact is accepted. Defects return for revision while budget remains; unresolved failures escalate when the limit is reached.</desc>
+                            <defs><marker id="verification-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#verification-arrow)">
+                                <path d="M194 62 H330"/><path d="M500 62 H640"/>
+                                <path d="M415 94 V160 H109 V94"/><path d="M415 160 V210 H640"/>
+                            </g>
+                            <rect class="node" x="24" y="30" width="170" height="64"/>
+                            <rect class="node check" x="330" y="30" width="170" height="64"/>
+                            <rect class="node terminal" x="640" y="30" width="170" height="64"/>
+                            <rect class="node control" x="640" y="184" width="170" height="52"/>
+                            <text x="109" y="68">Produce</text><text x="415" y="68">Verify</text><text x="725" y="68">Accept</text>
+                            <text x="725" y="216">Escalate</text>
+                            <text class="edge-label" x="262" y="49">artifact</text><text class="edge-label" x="570" y="49">pass</text>
+                            <text class="edge-label" x="262" y="146">defects: revise within budget</text>
+                            <text class="edge-label" x="530" y="197">limit reached</text>
+                        </svg>
+                        <svg class="diagram-mobile" viewBox="0 0 340 475" role="img" aria-labelledby="verification-mobile-title verification-mobile-desc">
+                            <title id="verification-mobile-title">A bounded generator and verifier loop</title>
+                            <desc id="verification-mobile-desc">Produce and verify an artifact, then accept it if it passes. Revision loops back to production on the left. Reaching the revision limit leads to escalation on the right.</desc>
+                            <defs><marker id="verification-mobile-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+                            <g class="edge" marker-end="url(#verification-mobile-arrow)">
+                                <path d="M170 84 V158"/><path d="M170 222 V298"/>
+                                <path d="M75 190 H20 V52 H75"/><path d="M265 190 H320 V430 H265"/>
+                            </g>
+                            <rect class="node" x="75" y="20" width="190" height="64"/>
+                            <rect class="node check" x="75" y="158" width="190" height="64"/>
+                            <rect class="node terminal" x="75" y="298" width="190" height="56"/>
+                            <rect class="node control" x="75" y="402" width="190" height="56"/>
+                            <text x="170" y="58">Produce</text><text x="170" y="196">Verify</text>
+                            <text x="170" y="332">Accept</text><text x="170" y="436">Escalate</text>
+                            <text class="edge-label" x="209" y="124">artifact</text><text class="edge-label" x="201" y="263">pass</text>
+                            <text class="edge-label" transform="translate(42 121) rotate(-90)">revise</text>
+                            <text class="edge-label" transform="translate(301 310) rotate(90)">limit reached</text>
+                        </svg>
+                        <figcaption><strong>Generator and verifier loop.</strong> Tests or source evidence drive the check. Failed artifacts return with specific defects; the revision budget determines when unresolved failures escalate.</figcaption>
+                    </figure>
+
+                    <p>Define a review rubric before the loop begins. For a compatibility patch, that might cover the reproduced failure, behavior of existing clients, required tests, and adherence to the allowed scope. The verifier should identify actionable failures and the evidence behind them.</p>
+
+                    <p>Also define an exit. An illustrative policy might allow two revision attempts, then return remaining failures to the integration owner for a decision. That number is a budget choice for the task, not a universal rule. Without a limit, a review loop can keep spending effort while repeating the same disagreement.</p>
+
+                    <p>If speed or cost drives the architecture choice, compare it with a simpler baseline on representative tasks using the same acceptance criteria. Record total spend, elapsed time, output quality, and human intervention. Include coordination, retries, review, and integration. Finishing individual branches quickly is only useful if the final accepted result also improves.</p>
+                </section>
+
+                <section id="shared-workspace" class="blog-section">
+                    <h2>Shared workspace or blackboard</h2>
+                    <p>A shared workspace, also called a <strong>blackboard</strong>, becomes useful when specialists repeatedly need each other's changing findings. Record ownership, status, dependencies, versions, and decisions. Choose a conflict-control mechanism that fits the environment: one writer per file, isolated branches, transactions, or explicit merge rules. A directory full of outputs does not establish which output is authoritative. This state-sharing pattern can support either a flat team or a hierarchy.</p>
+                </section>
+
+                <section id="routing" class="blog-section">
+                    <h2>Routing and peer handoffs</h2>
+                    <p><strong>Routing</strong> selects a specialist for an incoming request. <strong>Peer handoffs</strong> let specialists transfer responsibility as the diagnosis changes. For example, intake might send a support request to billing, which transfers it to technical support after identifying a service failure. Record the current owner, preserve relevant findings, and bound transfers to prevent loops. Routing chooses where work goes; it does not require every specialist to run concurrently.</p>
+                </section>
+
+                <section id="patterns" class="blog-section">
+                    <h2>Workflow comparison</h2>
+
+                    <p>The table compares where each workflow fits and the costs to watch. Some patterns describe the structure of the work; others add shared state or verification to that structure.</p>
+
+                    <div class="table-scroll" role="region" aria-label="Agent workflow comparison" tabindex="0">
+                        <table class="workflow-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Workflow name</th>
+                                    <th scope="col">When it fits</th>
+                                    <th scope="col">Cost to watch</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><a href="#hierarchy">Multi-tier pyramid</a></td>
+                                    <td>A delegated area needs its own planning and integration</td>
+                                    <td>Extra latency and lost requirements at handoffs</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#single-agent">One agent with tools and selective context</a></td>
+                                    <td>Discovery with tightly connected decisions</td>
+                                    <td>Serial work and growing context</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#code-driven">Code-driven workflow or DAG</a></td>
+                                    <td>A repeated procedure with known steps</td>
+                                    <td>Implementation, maintenance, and safe retries</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#flat-fan-out">Flat fan-out with one integration owner</a></td>
+                                    <td>Investigations that can proceed independently</td>
+                                    <td>Duplicate effort and too much output to reconcile</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#sequential-pipeline">Sequential pipeline</a></td>
+                                    <td>Ordered transformations of an artifact</td>
+                                    <td>Early errors reaching later stages</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#verification">Generator and verifier loop</a></td>
+                                    <td>Quality is limiting acceptance</td>
+                                    <td>Review expense and shared blind spots</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#shared-workspace">Shared workspace or blackboard</a></td>
+                                    <td>Specialists repeatedly need evolving information</td>
+                                    <td>Stale versions and competing writes</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#routing">Routing and peer handoffs</a></td>
+                                    <td>Different request categories need different expertise</td>
+                                    <td>Misrouting and handoff loops</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="decision" class="blog-section">
+                    <h2>Define the decision before choosing roles</h2>
+
+                    <p>Start with the deliverable. A patch that fixes a reproduced defect, a report whose findings link to source evidence, and a validated set of dataset labels require different checks. Write down what would make the result acceptable before deciding who should produce it.</p>
+
+                    <p>Then identify the constraint that matters most: elapsed time, quality, cost, context size, or the effort needed to combine results. Map which steps depend on others and which files or data they share. Include practical limits such as available tools, concurrency, permissions, and where sensitive data may be processed. These facts determine whether a proposed workflow can actually run.</p>
+
+                    <p>It helps to separate four choices that are easy to collapse into a single label like “multi-agent”:</p>
+
+                    <ul>
+                        <li><strong>Control:</strong> does code determine the next step, does an agent decide, or do they share that responsibility?</li>
+                        <li><strong>Structure:</strong> does the work run in one session, in sequence, in parallel branches, or through managers and workers?</li>
+                        <li><strong>State:</strong> how do participants retain and exchange information: messages, saved artifacts, or structured shared records?</li>
+                        <li><strong>Verification:</strong> what establishes that the output is acceptable: tests, source checks, human review, or a bounded revision loop?</li>
+                    </ul>
+
+                    <p>These choices combine. A script can schedule parallel model calls, collect their artifacts, and send questionable results to a reviewer. A single agent can use tests and durable notes. A hierarchy can use the same shared records as a flat team.</p>
+                </section>
+
+                <section id="handoffs" class="blog-section">
+                    <h2>Make handoffs and ownership explicit</h2>
+
+                    <p>A delegated task needs enough context to succeed without reconstructing the entire conversation. Include the original goal, relevant constraints, bounded scope, dependencies, permitted actions, acceptance criteria, and the expected return format. Keep authoritative references intact as the task passes between people or agents.</p>
+
+                    <p>Here is an illustrative handoff for one branch of an API review:</p>
+
+                    <pre class="code-snippet handoff-example"><code>Goal: assess whether the proposed API change preserves existing clients.
+Scope: inspect the API schema and the client contract tests at the supplied revision.
+Dependencies: use the interface proposal attached to the task; flag missing decisions.
+Allowed actions: read files and run existing checks; do not modify implementation or tests.
+Acceptance: each finding identifies an affected contract, supporting evidence, and a verification step.
+Return: a concise finding list, exact source references, checks run, and unresolved questions.
+Integration owner: the coordinator resolves conflicts with the service implementation review.</code></pre>
+
+                    <p>For a large result, save detailed evidence in an artifact and return its location and version with a short account of findings, assumptions, and validation status. This keeps the coordinator's immediate context manageable while retaining detail. Someone still has to read the evidence that matters before accepting the conclusion.</p>
+
+                    <p>Parallel reading with one integration owner is a useful engineering starting point. Parallel editing also works when ownership is distinct, interfaces are agreed, changes are isolated, and the combined result is checked. Assign the integration responsibility before starting the workers.</p>
+                </section>
+
+                <section id="examples" class="blog-section">
+                    <h2>Three tasks, three starting points</h2>
+
+                    <p>These examples illustrate the decision process. They are proposed arrangements, not reports of measured outcomes.</p>
+
+                    <h3>A failing integration test</h3>
+                    <p>Start with one agent that can reproduce the failure, follow the execution path, implement a focused correction, and run the relevant checks. The diagnosis and implementation are tightly coupled. Add a separate review if the change affects a sensitive contract or the initial validation leaves a material uncertainty. The trigger is an observed need for another check.</p>
+
+                    <h3>A recurring image dataset audit</h3>
+                    <p>Use code to enumerate batches and maintain stable item identifiers. Call a model where visual judgment is needed, validate the returned records, and aggregate flagged items. Independent batches can run concurrently within resource limits. Add targeted verification for uncertain cases. This combines explicit scheduling, parallel work, and quality checks without requiring a management hierarchy.</p>
+
+                    <h3>A review of twenty modules, four sharing an API</h3>
+                    <p>Start with flat reviewers for independent areas and one integration owner. Treat the four coupled modules as a connected review area with a common interface reference. If reconciling that area requires substantial internal planning and coordination, assign it a manager. Keep simpler branches flat.</p>
+                    <p>The return should identify defects with evidence, resolve duplicate reports, and flag disagreements about the shared API. If combining the findings becomes the bottleneck, first narrow worker scopes and improve their return format. Add another coordination layer only if it has a concrete integration job to do.</p>
+                </section>
+
+                <section id="recommendation" class="blog-section">
+                    <h2>Write a recommendation you can evaluate</h2>
+
+                    <p>Before implementing a workflow, capture the choice in a short recommendation. State the deliverable, dependencies, constraints, and priority, then explain how the proposed responsibilities and checks address them.</p>
+
+                    <p>For example, a review of a service and two clients before an API migration might start with this recommendation:</p>
+
+                    <pre class="code-snippet handoff-example"><code>Setup: one coordinator and two reviewers, with at most three agents running concurrently.
+
+Why: the service and clients share a schema, so they need one agreed contract and a combined compatibility check. Review quality is the priority.
+
+Responsibilities: the coordinator records the contract and resolves disagreements. One reviewer examines the service; the other traces both clients against that contract.
+
+Checks: findings cite exact source locations. Acceptance requires the agreed compatibility checks and an explicit disposition for each finding.
+
+Trade-off: the client review stays serial within one branch, reducing handoffs but potentially increasing elapsed time.
+
+Change condition: if the clients prove independent and their review dominates elapsed time, give each its own reviewer while retaining the shared concurrency limit.</code></pre>
+
+                    <p>A useful recommendation makes one clear choice, explains the task facts or assumptions behind it, assigns responsibilities and checks, identifies the main trade-off, and gives an observable condition for changing course. Resolve missing information when it could materially alter the choice; otherwise make the assumption visible.</p>
+
+                    <p>Keep that recommendation beside the acceptance criteria. After a representative run, compare the expected bottleneck with what actually consumed time and effort. That evidence gives the next workflow decision a firmer basis.</p>
+
+                    <div class="note-box">
+                        <h3>Further reading</h3>
+                        <p>Anthropic's <a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a> discusses composable patterns including prompt chaining, parallelization, orchestrator-workers, and evaluator-optimizer loops. Its box-and-arrow explanations inspired the presentation of the original diagrams in this article.</p>
+                    </div>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
