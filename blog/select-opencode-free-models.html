@@ -39,7 +39,11 @@
             padding-left: 0;
             margin-bottom: 0;
             display: grid;
-            gap: 16px;
+            gap: 8px;
+        }
+
+        .blog-scrollable-content .further-reading li {
+            line-height: 1.45;
         }
 
         .blog-scrollable-content .further-reading li span {
@@ -453,26 +457,10 @@ curl -s https://openrouter.ai/api/v1/key \
                     <div class="note-box further-reading">
                         <h3>Further reading</h3>
                         <ul>
-                            <li>
-                                <strong>Console catalog</strong><br>
-                                <a href="https://opencode.ai/docs/console/models/">opencode.ai/docs/console/models/</a><br>
-                                <span>Free set, variants, privacy notes, and deprecations.</span>
-                            </li>
-                            <li>
-                                <strong>OpenRouter free models</strong><br>
-                                <a href="https://openrouter.ai/models?max_price=0">openrouter.ai/models?max_price=0</a><br>
-                                <span>Filter <code>:free</code> endpoints; check Context and Architecture tabs plus upstream policy.</span>
-                            </li>
-                            <li>
-                                <strong>NVIDIA models</strong><br>
-                                <a href="https://build.nvidia.com/explore/discover">build.nvidia.com/explore/discover</a><br>
-                                <span>Nemotron and other models; free tiers marked, trial terms apply.</span>
-                            </li>
-                            <li>
-                                <strong>Independent ranking</strong><br>
-                                <a href="https://lmarena.ai/">LMArena</a><br>
-                                <span>Coding leaderboard for reasoning and coding Elo as tie-breaker.</span>
-                            </li>
+                            <li><strong>Console catalog:</strong> <a href="https://opencode.ai/docs/console/models/">opencode.ai/docs/console/models/</a> <span>— free set, variants, privacy, deprecations.</span></li>
+                            <li><strong>OpenRouter free models:</strong> <a href="https://openrouter.ai/models?max_price=0">openrouter.ai/models?max_price=0</a> <span>— filter <code>:free</code>, check Context/Architecture tabs.</span></li>
+                            <li><strong>NVIDIA models:</strong> <a href="https://build.nvidia.com/explore/discover">build.nvidia.com/explore/discover</a> <span>— free tiers marked, trial terms apply.</span></li>
+                            <li><strong>Independent ranking:</strong> <a href="https://lmarena.ai/">LMArena</a> <span>— Coding leaderboard for Elo tie-breaker.</span></li>
                         </ul>
                     </div>
                 </section>
