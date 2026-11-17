@@ -1,0 +1,488 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Free Models in OpenCode: Free Does Not Mean Risk-Free - Francesco Oliva</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="How to select and verify free models for OpenCode coding agents across Console, OpenRouter and NVIDIA: privacy, geoblocking, rate limits, and role assignment with safe fallbacks."/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <style>
+        .blog-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            overflow-wrap: break-word;
+        }
+
+        .table-of-contents,
+        .note-box {
+            padding: 20px;
+            margin: 24px 0;
+        }
+
+        .blog-scrollable-content .table-of-contents h3,
+        .blog-scrollable-content .note-box h3 {
+            margin-top: 0;
+        }
+
+        .blog-scrollable-content .table-of-contents ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        .note-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .blog-scrollable-content .further-reading ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 0;
+            display: grid;
+            gap: 16px;
+        }
+
+        .blog-scrollable-content .further-reading li span {
+            color: #b6c3d5;
+            font-size: 0.95rem;
+        }
+
+        .blog-scrollable-content .further-reading a {
+            overflow-wrap: anywhere;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+            margin: 24px 0;
+        }
+
+        .table-scroll:focus-visible {
+            outline: 2px solid var(--color-cyan);
+            outline-offset: 3px;
+        }
+
+        .workflow-table {
+            width: 100%;
+            min-width: 640px;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+
+        .workflow-table th,
+        .workflow-table td {
+            padding: 12px;
+            vertical-align: top;
+        }
+
+        .blog-scrollable-content pre.code-snippet {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font-family: var(--font-mono);
+        }
+    </style>
+</head>
+<body class="blog-page">
+
+    <div class="blog-view-wrapper">
+
+        <a href="../index.html" class="blog-back-button icon fa-arrow-left" aria-label="Back to home">
+            <span class="label">Back</span>
+        </a>
+
+        <div class="blog-scrollable-content">
+
+            <h1>Free Models in OpenCode: Free Does Not Mean Risk-Free</h1>
+            <p class="post-meta">Free removes cost, not risk</p>
+            <p class="post-meta">Posted on <time datetime="2026-11-17">November 17, 2026</time></p>
+            <p class="post-meta">Read time: 8 mins | Tags: AI Engineering, Coding Agents, OpenCode</p>
+            <hr>
+
+            <article class="blog-content">
+                <p>Free models accessible through OpenCode — Console, OpenRouter, NVIDIA, and other configured providers — are convenient: you experiment without a credit card, parallelize without watching the meter, and switch model families with one line of configuration. The problem is that "free" is a temporary entitlement, not a property of the model.</p>
+
+                <p>Two free models with similar names can differ in <strong>privacy, regional availability, request limits, quality, and how long they will exist</strong>. One declares zero retention, another retains prompts for safety, a third uses them for model improvement. One is reachable from your account, another answers <code>not available in your country</code>. One disappears next month.</p>
+
+                <p>This post walks through a practical workflow: classify the work, read the catalog, probe reachability, classify privacy, assign roles with fallbacks, and record the choice so it can be re-verified.</p>
+
+                <div class="note-box">
+                    <h3>The starting rule</h3>
+                    <p>Treat "free" as a temporary entitlement to verify per role and re-verify before every long or sensitive run. The catalog is a dated snapshot, not a contract.</p>
+                </div>
+
+                <nav class="table-of-contents" aria-label="Table of contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#boundary">Scope: what this workflow covers</a></li>
+                        <li><a href="#classify">1. Classify the work before the model</a></li>
+                        <li><a href="#catalog">2. Read the current catalog</a></li>
+                        <li><a href="#probe">3. Probe reachability</a></li>
+                        <li><a href="#privacy">4. Classify privacy and retention</a></li>
+                        <li><a href="#roles">5. Assign roles and fallbacks</a></li>
+                        <li><a href="#record">6. Record and re-verify</a></li>
+                        <li><a href="#rate-limits">Rate limits by provider</a></li>
+                        <li><a href="#failures">Failure handling</a></li>
+                        <li><a href="#antipatterns">Anti-patterns to avoid</a></li>
+                    </ul>
+                </nav>
+
+                <section id="boundary" class="blog-section">
+                    <h2>Scope: what this workflow covers</h2>
+                    <p>We are talking about free models accessible through OpenCode, referenced as <code>&lt;provider&gt;/&lt;model-id&gt;</code>:</p>
+                    <ul>
+                        <li><strong>OpenCode Console:</strong> <code>opencode/&lt;model-id&gt;</code>, with an optional variant (e.g. <code>opencode/deepseek-v4.1-flash-free#max</code>).</li>
+                        <li><strong>OpenRouter:</strong> <code>openrouter/&lt;model-id&gt;</code> (e.g. <code>openrouter/qwen/qwen-2.5-coder-32b-instruct:free</code> — prefer current coding-capable <code>:free</code> endpoints with tool support; old 7B/8B instruct models often fail multi-step tool schemas).</li>
+                        <li><strong>NVIDIA:</strong> <code>nvidia/&lt;model-id&gt;</code> (e.g. <code>nvidia/nemotron-3-ultra</code>).</li>
+                        <li><strong>Other providers:</strong> any provider configured in OpenCode that offers free models.</li>
+                    </ul>
+                    <p>Paid Console models are out of scope. The catalog changes without notice. Documentation and runtime can both be stale. That is why every choice must be probed, not just read.</p>
+                </section>
+
+                <section id="classify" class="blog-section">
+                    <h2>1. Classify the work before the model</h2>
+                    <p>Before opening the model picker, capture six facts. They narrow down the candidates, not the other way around.</p>
+                    <ul>
+                        <li><strong>Confidentiality:</strong> can sources, prompts, or outputs leave the trust boundary? This decides whether logged or training models are allowed.</li>
+                        <li><strong>Region:</strong> some models are geo-blocked. A catalog row does not prove your account can reach them.</li>
+                        <li><strong>Volume:</strong> free tiers cap aggressively — often 20–40 RPM or tens of requests per day. See <a href="#rate-limits">Rate limits by provider</a> before planning fan-out.</li>
+                        <li><strong>Role:</strong> architecture and review need reasoning; implementation needs code quality and throughput; exploration needs latency.</li>
+                        <li><strong>Independence:</strong> when a genuine second opinion matters, the reviewer should not share the implementer's model family.</li>
+                        <li><strong>Lifetime:</strong> free models are time-limited. Plan a fallback in the same privacy class.</li>
+                    </ul>
+                    <p>Example: reviewing a concurrent interface on proprietary code calls for zero retention + strong reasoning + an independent reviewer. High-volume exploration over synthetic code can settle for a fast model in the trial class.</p>
+                </section>
+
+                <section id="catalog" class="blog-section">
+                    <h2>2. Read the current catalog</h2>
+                    <p>One runtime, several documentations — each with a different job:</p>
+                    <ul>
+                        <li><strong>OpenCode Console:</strong> <a href="https://opencode.ai/docs/console/models/">opencode.ai/docs/console/models/</a> lists the free set, variants, pricing, privacy notes, and deprecations. Use it for contractual terms.</li>
+                        <li><strong>OpenRouter:</strong> <a href="https://openrouter.ai/models?max_price=0">openrouter.ai/models?max_price=0</a> filters free models. Check each model's Context and Architecture tabs plus the upstream provider's policy for privacy and retention.</li>
+                        <li><strong>NVIDIA:</strong> <a href="https://build.nvidia.com/explore/discover">build.nvidia.com/explore/discover</a> lists Nemotron and other models; free tiers are marked. Review NVIDIA's data usage policy per model.</li>
+                        <li><strong>Runtime:</strong> <code>opencode models</code>, or <code>/models</code> in the TUI, lists what this account can actually select across all configured providers. Use it for entitlement.</li>
+                    </ul>
+                    <p>Reference a model as <code>&lt;provider&gt;/&lt;model-id&gt;</code>, such as <code>opencode/deepseek-v4.1-flash-free#max</code> or <code>openrouter/qwen/qwen-2.5-coder-32b-instruct:free</code>. The <code>#variant</code> suffix is OpenCode 2 syntax — on 1.x use <code>--variant</code> instead.</p>
+                    <p>When docs and runtime disagree, trust the docs for terms and the runtime for entitlement. In both cases, probe before trusting either.</p>
+                    <p>For quality, use an independent tie-breaker: <a href="https://lmarena.ai/">LMArena</a> (formerly LMSYS Chatbot Arena) provides Elo ratings — prefer the Coding leaderboard for agentic work, and complement it with tool-assisted benchmarks like SWE-bench or LiveCodeBench where available. It only makes sense at equal privacy class and reachability — a higher Elo never compensates for unacceptable retention.</p>
+                </section>
+
+                <section id="probe" class="blog-section">
+                    <h2>3. Probe reachability</h2>
+                    <p>Catalog status is not reachability. Probe the exact provider, model, and variant. Examples target <strong>OpenCode 2</strong> — on 1.x replace <code>#max</code> with <code>--variant max</code>. <code>--archived</code> is recent; upgrade if your CLI reports an unknown-flag error.</p>
+                    <pre class="code-snippet"><code># OpenCode Console, with variant
+opencode run --archived --model opencode/deepseek-v4.1-flash-free#max "Reply with exactly: OK"
+
+# OpenRouter (:free has no variant — tool support varies by upstream model)
+opencode run --archived --model openrouter/qwen/qwen-2.5-coder-32b-instruct:free "Reply with exactly: OK"
+
+# NVIDIA
+opencode run --archived --model nvidia/nemotron-3-ultra "Reply with exactly: OK"
+
+# Tool-use probe for Implementer/Explorer candidates (chat OK ≠ agent OK)
+opencode run --archived --model opencode/glm-5.3-flash-free#max "Read package.json and list its dependencies without editing anything"</code></pre>
+                    <p>A plain <code>OK</code> ping only proves chat completion. Free endpoints — especially via OpenRouter — can pass it and still fail the first real agent turn with a 400 or malformed output when the upstream model lacks tool/function-calling support. Probe at least one read-only tool call for any role that will use tools.</p>
+                    <p><code>--archived</code> keeps probes out of normal history. To probe a set of models, automate the same command in a script that iterates over the candidates for your provider list.</p>
+
+                    <div class="table-scroll" role="region" aria-label="Probe results" tabindex="0">
+                        <table class="workflow-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Result</th>
+                                    <th scope="col">Meaning</th>
+                                    <th scope="col">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>prints <code>OK</code></td>
+                                    <td>reachable</td>
+                                    <td>keep it</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Model unavailable</code></td>
+                                    <td>not in the runtime catalog or not entitled</td>
+                                    <td>replace it</td>
+                                </tr>
+                                <tr>
+                                    <td><code>not available in your country</code></td>
+                                    <td>geo-block</td>
+                                    <td>replace it; do not retry</td>
+                                </tr>
+                                <tr>
+                                    <td>timeout</td>
+                                    <td>endpoint or network stall</td>
+                                    <td>retry once, then replace</td>
+                                </tr>
+                                <tr>
+                                    <td>429 or quota text</td>
+                                    <td>rate or daily cap</td>
+                                    <td>move the role or reduce fan-out; do not retry in burst — honor reset / Retry-After</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p>A model can show as <code>active</code> in the catalog and still fail. Always record the probe date.</p>
+                </section>
+
+                <section id="privacy" class="blog-section">
+                    <h2>4. Classify privacy and retention</h2>
+                    <p>Before using a free model on non-public code, read the current privacy and retention policy for <strong>each provider and model</strong>. Sort candidates into four classes:</p>
+
+                    <div class="table-scroll" role="region" aria-label="Privacy classes" tabindex="0">
+                        <table class="workflow-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Class</th>
+                                    <th scope="col">Meaning</th>
+                                    <th scope="col">Typical use</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Zero-retention, no training</td>
+                                    <td>provider states no retention and no training</td>
+                                    <td>confidential code, subject to policy</td>
+                                </tr>
+                                <tr>
+                                    <td>Retained, no training</td>
+                                    <td>short safety retention only</td>
+                                    <td>internal but not secret</td>
+                                </tr>
+                                <tr>
+                                    <td>May improve the model</td>
+                                    <td>inputs may be used for improvement</td>
+                                    <td>public or disposable code</td>
+                                </tr>
+                                <tr>
+                                    <td>Trial or training</td>
+                                    <td>logged trial data or training use</td>
+                                    <td>public or synthetic code only</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="note-box">
+                        <h3>Never infer privacy from the name</h3>
+                        <p>Providers change terms, and free endpoints often differ from the paid model of the same family. Read the class from the current terms, not the name. "Zero retention" on a free promotional endpoint is a contractual promise, not an enterprise BAA/DPA — regulated teams often treat any non-contracted free tier as off-limits for crown-jewel IP regardless of retention claims.</p>
+                    </div>
+
+                    <p>Provider-specific notes:</p>
+                    <ul>
+                        <li><strong>OpenCode Console:</strong> privacy class documented per model in the Console docs.</li>
+                        <li><strong>OpenRouter:</strong> varies by upstream provider. Check the OpenRouter model card and the original provider's policy. Many free models log prompts for moderation.</li>
+                        <li><strong>NVIDIA:</strong> Nemotron free endpoints are trials; data may be logged. Do not submit confidential code.</li>
+                        <li><strong>Other providers:</strong> check each provider's terms; free tiers often have weaker privacy than paid tiers.</li>
+                    </ul>
+                </section>
+
+                <section id="roles" class="blog-section">
+                    <h2>5. Assign roles and fallbacks</h2>
+                    <p>Think of the team as a pyramid: one architect at the apex making few high-reasoning calls, implementer and reviewer in the middle, and high-fan-out explorers at the base. "Pyramid suitability" in the next sections means which level — and which request volume — a provider can sustain without hitting its cap.</p>
+                    <p>Different roles ask for different capabilities. A reasonable starting split:</p>
+
+                    <div class="table-scroll" role="region" aria-label="Role assignment" tabindex="0">
+                        <table class="workflow-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Role</th>
+                                    <th scope="col">Prefer</th>
+                                    <th scope="col">Why</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Architect, planner</td>
+                                    <td>strongest reasoning, high variant</td>
+                                    <td>design quality drives everything downstream</td>
+                                </tr>
+                                <tr>
+                                    <td>Orchestrator</td>
+                                    <td>reliable instruction-follower, mid or high variant</td>
+                                    <td>coordinates, does not edit</td>
+                                </tr>
+                                <tr>
+                                    <td>Implementer</td>
+                                    <td>strong coding model, high variant</td>
+                                    <td>correctness and iteration speed</td>
+                                </tr>
+                                <tr>
+                                    <td>Reviewer</td>
+                                    <td>different family from the implementer, high variant</td>
+                                    <td>independent failure modes</td>
+                                </tr>
+                                <tr>
+                                    <td>Explorer</td>
+                                    <td>fast, low variant</td>
+                                    <td>high volume, low stakes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p>At equal privacy class and reachability, use LMArena Elo for the role's primary capability: reasoning and instruction-following for architect/planner, coding Elo for the implementer (Coding leaderboard, plus SWE-bench / LiveCodeBench where available), a different family with the highest Elo for the reviewer, throughput for orchestrator/explorer.</p>
+                    <p>Build a <strong>fallback chain inside the same privacy class</strong>. Prefer same-provider fallbacks for simpler config, cross-provider for independence. Never downgrade from a zero-retention model to a trial-logged one just to keep working.</p>
+
+                    <div class="table-scroll" role="region" aria-label="Cross-provider fallback chains" tabindex="0">
+                        <table class="workflow-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Privacy class</th>
+                                    <th scope="col">Example chain</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Zero-retention</td>
+                                    <td><code>opencode/deepseek-v4.1-flash-free</code> → <code>opencode/glm-5.3-flash-free</code> → <code>opencode/minimax-m3.1-flash-free</code></td>
+                                </tr>
+                                <tr>
+                                    <td>May improve</td>
+                                    <td><code>openrouter/qwen/qwen-2.5-coder-32b-instruct:free</code> → <code>openrouter/meta-llama/llama-3.3-70b-instruct:free</code> (filter for current coding-capable <code>:free</code> endpoints with tool support)</td>
+                                </tr>
+                                <tr>
+                                    <td>Trial / logged</td>
+                                    <td><code>nvidia/nemotron-3-ultra</code> → <code>opencode/nemotron-3.5-super-vl-free</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p>Watch out for variants: support differs per model. Use only variants advertised in the picker or provider metadata. A wrong variant fails at request time, not at config load. When a subagent pins <code>model:</code>, it overrides parent variant inheritance and silently falls back to the provider default — always pin the variant alongside the model.</p>
+                </section>
+
+                <section id="record" class="blog-section">
+                    <h2>6. Record and re-verify</h2>
+                    <p>Record provider, model ID, variant, role, privacy class, region result, probe date, rate-limit snapshot, and fallback in the project or agent config. <code>opencode.json/jsonc</code> and agent frontmatter do not validate custom fields — store probe metadata as comments or in a companion manifest next to the config.</p>
+                    <ul>
+                        <li>before a long or expensive run;</li>
+                        <li>after any <code>Model unavailable</code>, geo-block, or quota error;</li>
+                        <li>when provider documentation changes;</li>
+                        <li>when a free model is withdrawn or deprecated.</li>
+                    </ul>
+                    <p>Minimal record per role: provider + model + variant, privacy class, reachability + date, RPM/RPD snapshot + quota check method, 429 strategy, pyramid suitability (e.g. OpenRouter <code>:free</code> for explorer only, NVIDIA for fallback/reviewer, Console zero-retention for architect/implementer), and the same-class fallback.</p>
+                    <pre class="code-snippet"><code>// opencode.jsonc — roles with probe/privacy recorded in comments
+{
+  // architect: opencode/deepseek-v4.1-flash-free#max
+  //   privacy: zero-retention | probe: 2026-11-17 OK + tool-read OK
+  //   fallback (manual): opencode/glm-5.3-flash-free#max
+  "architect": "opencode/deepseek-v4.1-flash-free#max",
+  // reviewer: different family from implementer
+  //   privacy: zero-retention | probe: 2026-11-17 OK
+  //   fallback (manual): opencode/minimax-m3.1-flash-free
+  "reviewer": "opencode/glm-5.3-flash-free#max",
+  // explorer: low-volume only — OpenRouter :free, 20 RPM / small daily bucket
+  //   privacy: may-improve (logged for moderation) | probe: 2026-11-17 OK
+  "explorer": "openrouter/qwen/qwen-2.5-coder-32b-instruct:free"
+}
+// Fallback is manual (or wrapper-scripted), not automatic:
+// on 429/unavailable, switch the role string above to its
+// same-privacy-class fallback. Exception: OpenRouter's own
+// models array can route within OpenRouter.</code></pre>
+                </section>
+
+                <section id="rate-limits" class="blog-section">
+                    <h2>Rate limits by provider</h2>
+                    <p>Free tiers fail on throughput before they fail on quality. The three providers cap differently, and the cap decides which roles each provider can hold.</p>
+
+                    <div class="table-scroll" role="region" aria-label="Rate limits by provider" tabindex="0">
+                        <table class="workflow-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Provider</th>
+                                    <th scope="col">Free tier limits</th>
+                                    <th scope="col">Pyramid guidance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>OpenCode Console</strong></td>
+                                    <td>No published general RPM/RPD; only explicit cap is <code>LongCat 2.5 Free: 100 req/day</code>. Others are "free for a limited time" without declared caps. Shared per account/network/IP bucket, reset 00:00 UTC, dynamic with capacity vs demand.</td>
+                                    <td>Good for architect/implementer on zero-retention models. On <code>Free usage limit reached</code>, move the role or reduce parallelism; do not retry in burst.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>OpenRouter</strong></td>
+                                    <td><code>:free</code> models: <strong>20 RPM</strong> always; <strong>50 RPD</strong> (&lt;10 lifetime credits) / <strong>1,000 RPD</strong> (≥10 credits). Shared across all <code>:free</code> models, UTC day. Negative balance → 402. Upstream 429s apply independently.</td>
+                                    <td>Explorer / low-volume only. Do not use for fan-out or architect with many subagents.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>NVIDIA</strong></td>
+                                    <td><strong>~40 RPM global</strong>, shared across all models at key level, not per model. No official daily. Requires Developer Program + phone verification, geo-blocked in ~10 countries. Trial only: no production, no confidential data.</td>
+                                    <td>Fallback / reviewer / secondary vision worker only. On 429 with <code>Retry-After</code>, back off and move sustained work to <code>opencode/*</code> zero-retention.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p>Check quota before a large run:</p>
+                    <pre class="code-snippet"><code># OpenRouter: free daily counter
+curl -s https://openrouter.ai/api/v1/key \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  | jq '.data.free_model_daily_requests'
+# OpenCode Console: no API — reset time is in the error message, reset 00:00 UTC
+# NVIDIA: account page on build.nvidia.com — ~40 RPM shared, no official daily</code></pre>
+
+                    <div class="note-box">
+                        <h3>429 handling differs per provider</h3>
+                        <p>OpenCode: wait for the reset time in the error, reduce parallelism. OpenRouter: honor <code>X-RateLimit-Reset</code>; if the source is <code>upstream_provider_shared_pool</code>, switch model or add a paid fallback. The <code>free_model_daily_requests</code> counter can lag ~1 minute in bursts, and a missing <code>:free</code> suffix can silently route to a paid endpoint — double-check the suffix before a large run. NVIDIA: honor <code>Retry-After</code> and move sustained parallelism to Console zero-retention.</p>
+                    </div>
+                </section>
+
+                <section id="failures" class="blog-section">
+                    <h2>Failure handling</h2>
+                    <ul>
+                        <li><strong>Model unavailable:</strong> switch the role to its recorded same-class fallback. Do not silently downgrade privacy.</li>
+                        <li><strong>Geo-blocked:</strong> replace it. Retrying cannot change the region.</li>
+                        <li><strong>Rate limited:</strong> treat as a routing signal, not a retry signal — move the role or narrow fan-out per the provider table above.</li>
+                        <li><strong>Deprecated:</strong> migrate before the removal date; check the deprecation table for both the family and the exact version.</li>
+                        <li><strong>Unexpected quality drop:</strong> re-check the selected variant and whether the free alias now points to a different backend.</li>
+                    </ul>
+                </section>
+
+                <section id="antipatterns" class="blog-section">
+                    <h2>Anti-patterns to avoid</h2>
+                    <ul>
+                        <li>Treating a catalog row as proof of entitlement.</li>
+                        <li>Sending confidential code to trial-logged or training models — including NVIDIA trials.</li>
+                        <li>Assigning every role to a single provider family.</li>
+                        <li>Using a daily-capped model for fan-out work — notably OpenRouter <code>:free</code> for architect with many subagents.</li>
+                        <li>Using NVIDIA trial endpoints for sustained parallelism or production.</li>
+                        <li>Hardcoding a free model with no fallback.</li>
+                        <li>Confusing a deprecated base model with its current free variant.</li>
+                    </ul>
+                    <div class="note-box further-reading">
+                        <h3>Further reading</h3>
+                        <ul>
+                            <li>
+                                <strong>Console catalog</strong><br>
+                                <a href="https://opencode.ai/docs/console/models/">opencode.ai/docs/console/models/</a><br>
+                                <span>Free set, variants, privacy notes, and deprecations.</span>
+                            </li>
+                            <li>
+                                <strong>OpenRouter free models</strong><br>
+                                <a href="https://openrouter.ai/models?max_price=0">openrouter.ai/models?max_price=0</a><br>
+                                <span>Filter <code>:free</code> endpoints; check Context and Architecture tabs plus upstream policy.</span>
+                            </li>
+                            <li>
+                                <strong>NVIDIA models</strong><br>
+                                <a href="https://build.nvidia.com/explore/discover">build.nvidia.com/explore/discover</a><br>
+                                <span>Nemotron and other models; free tiers marked, trial terms apply.</span>
+                            </li>
+                            <li>
+                                <strong>Independent ranking</strong><br>
+                                <a href="https://lmarena.ai/">LMArena</a><br>
+                                <span>Coding leaderboard for reasoning and coding Elo as tie-breaker.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+            </article>
+
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+
+</body>
+</html>
